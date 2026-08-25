@@ -1,0 +1,63 @@
+{
+  "summary": "Co-Coachify Phase 1 rebuild — full backend + frontend test pass. Backend: 34/34 pytest tests pass covering auth/role/onboarding/sessions/programs (category+length validation, resize, coach-only)/invites (code + coach_email)/coach clients/assign/activity/stats (with 403 authz)/dashboard (rest-day null, streak)/log-advances-day/progress/Stripe checkout. Frontend (Expo web): coach.demo login lands on Practitioner Home showing 1 client/1 program/100% active + Recent Activity + Needs Attention; Clients tab lists 'Client Demo · Rowing Strength Program · Day 2/7' with On Track chip; client detail shows intake, check-in history, Assign a Different Program modal opens with the coach's program. Programs tab shows Rowing Strength Program with category filters (All/Fitness/Breathwork/Yoga…), New Program editor renders name/description/type/length/days/difficulty fields. Session editor renders name/type/target minutes/warmup/finisher/exercise list. Client (client.demo) lands on Today tab with 1-day streak badge and DAY 2/7 Rest Day card (session_id null handled correctly), Progress tab renders workout duration bar + RPE chart + history, Settings shows YOUR COACH card with 'Connected' chip. Client tabs correctly hide Clients/Programs via href:null. Session/[id] renders exercises grouped by block labels (POWER, SUPERSET B) with Form:/Purpose: notes; Complete & Check In opens Daily Check-In modal with duration/RPE 1–10/notes. Fresh signup landed directly on Today tab bypassing role-select and onboarding — this is a HIGH-priority routing bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "login.tsx post-auth navigation",
+        "issue": "After successful register/login, login.tsx unconditionally routes to /(tabs) via useEffect(() => { if (user) router.replace('/(tabs)') }, [user]). This skips the role-select and onboarding gates that /app/index.tsx enforces. Fresh signup of testuser+<rand>@cocoachify.com landed on client Today tab as role=null user (also reproduced with legacy testcoach@cocoachify.com — documented no-role account also went straight to Today). Reference: /app/frontend/app/login.tsx:34-36.",
+        "testID": "submit-auth-btn",
+        "priority": "HIGH"
+      },
+      {
+        "component": "(tabs)/_layout.tsx",
+        "issue": "TabsLayout only checks !user for redirect; it does NOT guard against user.role === null or (client && !onboarding_completed). Users with no role default to client tab layout because isCoach = user?.role === 'coach' is false. Should redirect to /role-select or /onboarding respectively. Reference: /app/frontend/app/(tabs)/_layout.tsx:13-17.",
+        "testID": "",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "program/[id] header (coach view of Rowing Strength Program)",
+        "issues": [
+          "Header says '1 Weeks · 3 Days/Week · Intermediate' — grammatical: should be '1 Week' when weeks == 1 (total_days=7).",
+          "Program description reads '4-week strength and power' while total_days is 7. Seed content mismatch — cosmetic only."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX login.tsx: after login/register do NOT hardcode router.replace('/(tabs)'). Instead route based on user shape — if !user.role -> /role-select; if role==='client' && !onboarding_completed -> /onboarding; else /(tabs). Simplest: router.replace('/') and let index.tsx (already correct) do the branching.",
+    "HARDEN (tabs)/_layout.tsx: if user has no role, Redirect to /role-select; if role==='client' && !user.onboarding_completed, Redirect to /onboarding. This closes the loophole even if some future entry point sends a bare user to /(tabs).",
+    "Cosmetic: pluralize weeks label in program header ('1 Week' vs '2 Weeks') and align Rowing Strength Program seed description ('4-week') with actual total_days=7."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes_misc.py POST /invites is fine but returned invite may include naive datetimes (created_at as datetime is inserted then returned — Mongo may return _id in inserted-obj if not popped). Currently pops _id; OK.",
+    "routes_coach.assign_program overwrites active enrollment (update_many active=False then insert new) — correct.",
+    "routes_logs.create_log advances current_day only when body.program_id is provided. Frontend must send program_id on workout log — verified via the check-in modal path.",
+    "auth.get_current_user tries custom JWT first, then Emergent session — dual-path is correct.",
+    "programs.PUT resize keeps first N of old schedule and pads with None — verified in test_update_program_resize.",
+    "No mongo _id leakage detected across endpoints (all queries use projection {'_id': 0} or pop before returning)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (rewrote for Phase 1 backend: 34 tests across auth/role/onboarding/sessions/programs/invites/coach/dashboard/logs/checkout)"
+  ],
+  "success_rate": {
+    "backend": "100% (34/34)",
+    "frontend": "~85% (main flows all working; role-routing bug on signup/legacy no-role login is the outlier)"
+  },
+  "seed_data_creation": "No production seed data created. Test file uses per-run unique TEST_ prefixed emails (auto-cleaned by uniqueness, and MongoDB TTL is not set — main agent may want a cleanup script eventually).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend is stable (34/34). If retesting after login.tsx fix: (1) run pytest /app/backend/tests/backend_test.py — should stay 34/34 green. (2) Playwright: sign up a fresh testuser+<rand>@cocoachify.com and confirm URL becomes /role-select and role-client testID renders. Continue through onboarding-continue steps → land on Today with 'Connect to your coach' banner and no Clients/Programs tabs. (3) Login legacy testcoach@cocoachify.com and confirm it also hits /role-select. Existing accounts coach.demo and client.demo already have role set so they should behave unchanged.",
+  "rca_of_issue": "Root cause of the signup→Today bug: /app/frontend/app/login.tsx line 34-36 has `useEffect(() => { if (user) router.replace('/(tabs)') }, [user]);`. As soon as AuthContext receives the new user (with role=null) from register/login, this effect fires and hard-navigates to the tabs group. The (tabs)/_layout.tsx only guards against `!user` (redirects to /login) but does not enforce role/onboarding gates, so it silently renders the client Today tab (since isCoach is false when role is null). The correct place to gate is /app/frontend/app/index.tsx which already has the correct branching; login.tsx should either route to '/' or replicate the same logic. Reproduction: 1) Open /login  2) Toggle to signup  3) Register with a fresh email/password  4) Observe URL becomes '/' and screen is client Today with 0-day-streak greeting the new name — no role-select shown. Mitigation options (recommended #1): change login.tsx redirect to `router.replace('/')` so index.tsx does the branching."
+}

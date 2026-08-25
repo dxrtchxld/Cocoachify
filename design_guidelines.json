@@ -1,0 +1,176 @@
+{
+  "app_name": "Co-Coachify",
+  "personality": "7 Dark-First Utility DARK",
+  "personality_one_liner": "A sleek, command-center fitness tracking experience driven by bold typography, neon coral accents, and live metric visibility.",
+  "color": {
+    "surface": "#121214",
+    "onSurface": "#FFFFFF",
+    "surfaceSecondary": "#1C1C1E",
+    "onSurfaceSecondary": "#A1A1A8",
+    "surfaceTertiary": "#2C2C2E",
+    "onSurfaceTertiary": "#EBEBF5",
+    "surfaceInverse": "#F4F4F5",
+    "onSurfaceInverse": "#121214",
+    "brand": "#FF4B3A",
+    "brandPrimary": "#FF4B3A",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#FF7B6E",
+    "onBrandSecondary": "#121214",
+    "brandTertiary": "#4A1A15",
+    "onBrandTertiary": "#FFBDB8",
+    "success": "#32D74B",
+    "onSuccess": "#003A10",
+    "warning": "#FFD60A",
+    "onWarning": "#4C3E00",
+    "error": "#FF453A",
+    "onError": "#4A0000",
+    "info": "#0A84FF",
+    "onInfo": "#002353",
+    "border": "#2C2C2E",
+    "borderStrong": "#48484A",
+    "divider": "#1C1C1E"
+  },
+  "typography": {
+    "displayFontFamily": "Oswald",
+    "textFontFamily": "Manrope",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Handle spacing correctly dont have extra spaces where its not required, handle padding and margin corectly and subtle for buttons and components",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": [
+      "Use solid surfaceSecondary with border dividers for command-center clarity"
+    ],
+    "dont's": [
+      "No blur on data-heavy dashboards",
+      "No glassmorphism that reduces metric readability"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Dashboard",
+      "purpose": "A command-center daily view mixing live metrics, streak data, and today's workout plan.",
+      "states": {
+        "loading": "Centered loading spinner with 'Syncing health data...'",
+        "empty": "Illustration of a calendar/metrics with 'No data logged yet today. Start your first workout!' + primary CTA",
+        "error": "Error message 'Unable to load today's plan' + Retry button"
+      },
+      "layout": "Top area: User greeting + workout streak/active days focused area. Middle: Multi-metric progress visuals (circular progress indicators or stacked bars for calories, steps, active time). Bottom: 'Today's Plan' with a large action card containing an image backdrop, gradient scrim, and 'Start Workout' button pinned at the bottom."
+    },
+    {
+      "name": "AICoachChat",
+      "purpose": "Conversational interface where the AI acts as a coach, delivering customized plans directly in the chat.",
+      "states": {
+        "loading": "Typing indicator bubble for AI",
+        "empty": "Welcome message from AI Coach + suggested prompt chips ('Give me a leg day plan', 'Log my breakfast')",
+        "error": "Message bubble with 'Connection lost. Tap to retry.'"
+      },
+      "layout": "Standard chat feed using flat message bubbles. AI responses can return structured 'Workout Plan Cards' (displaying exercise name, sets, reps, rest periods) or 'Meal Plan Cards' injected directly into the chat flow, complete with inline 'Log Workout' actions."
+    },
+    {
+      "name": "WorkoutLog",
+      "purpose": "Structured data entry and history of completed programs, exercises, and body metrics.",
+      "states": {
+        "loading": "Skeleton loaders for list rows",
+        "empty": "Illustration + 'Your workout history is empty. Time to lift!'",
+        "error": "Error message 'Failed to fetch logs' + Retry"
+      },
+      "layout": "Stacked list design. Interactive segmented control filter at the top (Workouts | Nutrition | Body). Workout items shown as dense rows with key metrics (duration, volume, personal records). Use dividers instead of cards for high density."
+    },
+    {
+      "name": "CommunityFeed",
+      "purpose": "A social space for peer co-coaching, sharing workout achievements, and connecting with human coaches.",
+      "states": {
+        "loading": "Skeleton cards",
+        "empty": "'Follow coaches or friends to see their updates here.' + Explore CTA",
+        "error": "'Feed couldn't load.' + Retry"
+      },
+      "layout": "Modular card-based structure. Persistent 'Share an update' input field at the top. Post cards contain user avatar, text description, embedded media (workout summary or photo), and interactive icons (likes, comments, badges). Use border Strong for separators."
+    },
+    {
+      "name": "PremiumPaywall",
+      "purpose": "Upsell screen for the premium Co-Coach subscription.",
+      "states": {
+        "loading": "Spinner during purchase verification",
+        "empty": "N/A",
+        "error": "'Purchase failed' + Retry"
+      },
+      "layout": "Full-screen cinematic layout. Large hero background image (running night neon) with heavy top-to-bottom dark gradient scrim. Huge display typography for the value prop. List of premium features with tinted icons (brandTertiary bg + brandPrimary icon). Sticky primary CTA at the bottom."
+    }
+  ],
+  "images": {
+    "dashboard_hero": {
+      "url": "https://images.pexels.com/photos/3253515/pexels-photo-3253515.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Man lifting dumbbell in a dark gym setting"
+    },
+    "premium_hero": {
+      "url": "https://images.unsplash.com/photo-1705468616275-616b7c01d317?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxydW5uaW5nJTIwbmlnaHQlMjBuZW9ufGVufDB8fHx8MTc4NzY4OTgzMHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Blurry photo of a man running at night with neon lights"
+    },
+    "community_avatar_1": {
+      "url": "https://images.pexels.com/photos/221241/pexels-photo-221241.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Fit woman posing confidently in a dark studio"
+    },
+    "community_avatar_2": {
+      "url": "https://images.unsplash.com/photo-1548690312-e3b507d8c110?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxmaXRuZXNzJTIwbW9kZWwlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODc2ODk4MzB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Fitness woman holding a black battle rope"
+    },
+    "workout_card_bg": {
+      "url": "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxneW0lMjB3b3Jrb3V0JTIwZGFya3xlbnwwfHx8fDE3ODc2ODk4MzB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Grayscale photo of a man working out"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark-First Utility DARK guidelines. Do not use blur/glass effects as it degrades readability for data-heavy fitness tracking.",
+    "Use Neon Electric Coral (#FF4B3A) sparingly for primary CTAs, active tab states, and key metric callouts. Do not overuse it as a background color.",
+    "For the AI Coach Chat, ensure that structured Workout Plan cards and Meal Plan cards are rendered inline within the chat feed as interactive components, not just plain text.",
+    "Dashboard should heavily utilize circular progress indicators and clear numeric metrics with Oswald display font to resemble a sports command center.",
+    "Never place text over raw images. Always use a linear gradient scrim (transparent to #121214) when overlaying text on the Dashboard Hero or Premium Hero.",
+    "Ensure the sticky bottom CTAs (like in Premium Paywall and Dashboard) sit outside scrolling content and respect the bottom safe area.",
+    "No indigo, violet, or blue colors allowed. Stick to the graphite and coral palette.",
+    "All text inputs and form fields should have labels above the input and a minimalist underline or 1px border. No floating labels or chunky cards."
+  ],
+  "haptics": {
+    "primary_button_press": "impactMedium",
+    "tab_change": "selection",
+    "workout_logged": "notificationSuccess",
+    "ai_message_received": "impactLight",
+    "filter_change": "selection"
+  }
+}
