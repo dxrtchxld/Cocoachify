@@ -47,6 +47,7 @@ export default function ProgramScreen() {
   const { user } = useAuth();
   const [program, setProgram] = useState<ProgramDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [duplicating, setDuplicating] = useState(false);
 
   const isOwner = user?.role === "coach" && program?.owner_id === user.user_id;
 
@@ -65,6 +66,17 @@ export default function ProgramScreen() {
       load();
     }, [load]),
   );
+
+  const duplicate = async () => {
+    if (duplicating) return;
+    setDuplicating(true);
+    try {
+      const copy = await api<{ id: string }>(`/programs/${id}/duplicate`, { method: "POST" });
+      router.replace({ pathname: "/program/[id]", params: { id: copy.id } });
+    } catch {
+      setDuplicating(false);
+    }
+  };
 
   const confirmDelete = () => {
     const doDelete = async () => {
@@ -118,6 +130,18 @@ export default function ProgramScreen() {
           </TouchableOpacity>
           {isOwner && (
             <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                testID="duplicate-program-btn"
+                onPress={duplicate}
+                style={styles.iconBtn}
+                disabled={duplicating}
+              >
+                {duplicating ? (
+                  <ActivityIndicator size="small" color={colors.brand} />
+                ) : (
+                  <Ionicons name="copy-outline" size={21} color={colors.onSurface} />
+                )}
+              </TouchableOpacity>
               <TouchableOpacity
                 testID="edit-program-btn"
                 onPress={() => router.push({ pathname: "/program-editor", params: { id: program.id } })}

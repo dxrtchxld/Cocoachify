@@ -27,6 +27,10 @@ type ClientDetail = {
   current_day: number | null;
   total_days: number | null;
   last_checkin: string | null;
+  streak: number;
+  total_checkins: number;
+  week_checkins: number;
+  last_active: string | null;
   onboarding: {
     goal: string;
     experience: string;
@@ -154,6 +158,31 @@ export default function ClientScreen() {
             <Ionicons name="chatbubble-ellipses" size={20} color={colors.brand} />
           </TouchableOpacity>
         </View>
+
+        {/* Progress snapshot */}
+        <Text style={styles.sectionTitle}>PROGRESS</Text>
+        <View style={styles.progressRow}>
+          <View style={styles.progressCard}>
+            <Ionicons name="flame" size={18} color={colors.brand} />
+            <Text style={styles.progressValue}>{client.streak}</Text>
+            <Text style={styles.progressLabel}>DAY STREAK</Text>
+          </View>
+          <View style={styles.progressCard}>
+            <Ionicons name="calendar" size={18} color={colors.brand} />
+            <Text style={styles.progressValue}>{client.week_checkins}</Text>
+            <Text style={styles.progressLabel}>THIS WEEK</Text>
+          </View>
+          <View style={styles.progressCard}>
+            <Ionicons name="checkmark-done-circle" size={18} color={colors.brand} />
+            <Text style={styles.progressValue}>{client.total_checkins}</Text>
+            <Text style={styles.progressLabel}>TOTAL</Text>
+          </View>
+        </View>
+        {client.last_active ? (
+          <Text style={styles.lastActive}>Last active {formatDate(client.last_active)}</Text>
+        ) : (
+          <Text style={styles.lastActive}>No check-ins logged yet</Text>
+        )}
 
         {/* Current program */}
         <Text style={styles.sectionTitle}>CURRENT PROGRAM</Text>
@@ -367,6 +396,26 @@ const styles = StyleSheet.create({
   },
   programName: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurface },
   programMeta: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 2 },
+  progressRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl },
+  progressCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: "center",
+    gap: 4,
+  },
+  progressValue: { fontFamily: fonts.displayBold, fontSize: 22, color: colors.onSurface },
+  progressLabel: { fontFamily: fonts.semiBold, fontSize: 9, color: colors.onSurfaceSecondary, letterSpacing: 0.8 },
+  lastActive: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.onSurfaceSecondary,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+  },
   emptyCard: {
     marginHorizontal: spacing.xl,
     backgroundColor: colors.surfaceSecondary,

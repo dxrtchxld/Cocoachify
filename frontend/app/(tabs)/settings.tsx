@@ -192,6 +192,32 @@ export default function Settings() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
             </TouchableOpacity>
+            <TouchableOpacity
+              testID="exercise-library-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/exercise-library")}
+            >
+              <Ionicons name="barbell" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Exercise library</Text>
+                <Text style={styles.rowSub}>Reusable exercises & coaching cues</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="customize-home-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/dashboard-customize")}
+            >
+              <Ionicons name="options" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Customize home</Text>
+                <Text style={styles.rowSub}>Reorder & hide dashboard sections</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
             <View style={styles.row}>
               <Ionicons name="mail" size={20} color={colors.brand} />
               <View style={{ flex: 1 }}>

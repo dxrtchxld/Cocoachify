@@ -97,6 +97,55 @@ async def get_program(program_id: str, user: dict = Depends(get_current_user)):
     return result
 
 
+@router.post("/programs/{program_id}/duplicate", status_code=201)
+async def duplicate_program(program_id: str, user: dict = Depends(get_current_user)):
+    _require_coach(user)
+    program = await db.programs.find_one({"id": program_id}, {"_id": 0})
+    if not program:
+        raise HTTPException(status_code=404, detail="Program not found")
+    if not program.get("is_template") and program.get("owner_id") != user["user_id"]:
+        raise HTTPException(status_code=403, detail="You can only duplicate your own programs or templates")
+
+    # Copy each referenced session into a fresh session owned by this coach
+    session_ids = list({s for s in program.get("schedule", []) if s})
+    sessions = await db.coaching_sessions.find(
+        {"id": {"$in": session_ids}}, {"_id": 0}
+    ).to_list(500)
+    id_map: dict[str, str] = {}
+    new_sessions = []
+    for s in sessions:
+        new_id = f"ses_{uuid.uuid4().hex[:12]}"
+        id_map[s["id"]] = new_id
+        copy = dict(s)
+        copy["id"] = new_id
+        copy["owner_id"] = user["user_id"]
+        copy["created_at"] = datetime.now(timezone.utc)
+        new_sessions.append(copy)
+    if new_sessions:
+        await db.coaching_sessions.insert_many(new_sessions)
+
+    new_schedule = [id_map.get(s) if s else None for s in program.get("schedule", [])]
+    new_program = {
+        "id": f"prog_{uuid.uuid4().hex[:12]}",
+        "name": f"{program['name']} (Copy)"[:100],
+        "description": program.get("description", ""),
+        "category": program.get("category", "fitness"),
+        "difficulty": program.get("difficulty", "beginner"),
+        "total_days": program["total_days"],
+        "days_per_week": program.get("days_per_week", 3),
+        "spotify_url": program.get("spotify_url"),
+        "schedule": new_schedule,
+        "owner_id": user["user_id"],
+        "is_template": False,
+        "tags": program.get("tags", []),
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.programs.insert_one(dict(new_program))
+    new_program.pop("_id", None)
+    new_program["created_at"] = new_program["created_at"].isoformat()
+    return new_program
+
+
 class ProgramBody(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="", max_length=2000)

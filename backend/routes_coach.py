@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +17,29 @@ def require_coach(user: dict) -> None:
 
 def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
+def _checkin_stats(logs: list[dict]) -> dict:
+    """Streak + activity summary from a client's workout logs."""
+    workouts = [l for l in logs if l.get("log_type") == "workout"]
+    days = {_aware(l["date"]).date() for l in workouts}
+    now = datetime.now(timezone.utc)
+    streak = 0
+    cursor = now.date()
+    if cursor not in days:
+        cursor = cursor - timedelta(days=1)
+    while cursor in days:
+        streak += 1
+        cursor = cursor - timedelta(days=1)
+    week_start = now - timedelta(days=7)
+    week = [l for l in workouts if _aware(l["date"]) >= week_start]
+    last = max((_aware(l["date"]) for l in workouts), default=None)
+    return {
+        "streak": streak,
+        "total_checkins": len(workouts),
+        "week_checkins": len(week),
+        "last_active": last.isoformat() if last else None,
+    }
 
 
 async def _client_status(client: dict) -> dict:
@@ -81,11 +105,13 @@ async def client_detail(client_id: str, user: dict = Depends(get_current_user)):
     logs = (
         await db.client_logs.find({"user_id": client_id}, {"_id": 0})
         .sort("date", -1)
-        .to_list(30)
+        .to_list(365)
     )
+    stats = _checkin_stats(logs)
+    logs = logs[:30]
     for l in logs:
         l["date"] = _aware(l["date"]).isoformat()
-    return {**user_public(client), **info, "logs": logs}
+    return {**user_public(client), **info, **stats, "logs": logs}
 
 
 class AssignRequest(BaseModel):
@@ -197,6 +223,111 @@ async def review_checkin(log_id: str, user: dict = Depends(get_current_user)):
     if not client:
         raise HTTPException(status_code=403, detail="Not your client")
     await db.client_logs.update_one({"id": log_id}, {"$set": {"reviewed": True}})
+    return {"ok": True}
+
+
+class ReplyBody(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/inbox/{log_id}/reply", status_code=201)
+async def reply_checkin(log_id: str, body: ReplyBody, user: dict = Depends(get_current_user)):
+    """Reply to a check-in from the Inbox: sends the client a message and marks it reviewed."""
+    require_coach(user)
+    log = await db.client_logs.find_one({"id": log_id}, {"_id": 0})
+    if not log:
+        raise HTTPException(status_code=404, detail="Check-in not found")
+    client = await db.users.find_one(
+        {"user_id": log["user_id"], "coach_id": user["user_id"]}, {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=403, detail="Not your client")
+    now = datetime.now(timezone.utc)
+    message = {
+        "id": f"msg_{uuid.uuid4().hex[:12]}",
+        "sender_id": user["user_id"],
+        "recipient_id": log["user_id"],
+        "text": body.text.strip(),
+        "created_at": now,
+    }
+    await db.messages.insert_one(dict(message))
+    await db.client_logs.update_one(
+        {"id": log_id}, {"$set": {"reviewed": True, "coach_reply": body.text.strip()}}
+    )
+    return {"ok": True}
+
+
+# ---------- Exercise Library ----------
+
+class ExerciseBody(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    note: str = Field(default="", max_length=500)
+
+
+@router.get("/exercise-library")
+async def exercise_library(user: dict = Depends(get_current_user)):
+    require_coach(user)
+    # Auto-fill: distinct exercises used across the coach's sessions
+    sessions = await db.coaching_sessions.find(
+        {"owner_id": user["user_id"]}, {"_id": 0, "exercises": 1}
+    ).to_list(1000)
+    agg: dict[str, dict] = {}
+    for s in sessions:
+        for ex in s.get("exercises", []):
+            name = (ex.get("name") or "").strip()
+            if not name:
+                continue
+            key = name.lower()
+            entry = agg.setdefault(key, {
+                "id": None, "name": name, "note": ex.get("form_note") or "",
+                "sets": ex.get("sets"), "reps": ex.get("reps"),
+                "usage_count": 0, "source": "program",
+            })
+            entry["usage_count"] += 1
+            if not entry["note"] and ex.get("form_note"):
+                entry["note"] = ex["form_note"]
+
+    # Manual additions override/augment by name
+    manual = await db.exercise_library.find({"coach_id": user["user_id"]}, {"_id": 0}).to_list(500)
+    for m in manual:
+        key = m["name"].lower()
+        agg[key] = {
+            "id": m["id"], "name": m["name"], "note": m.get("note") or "",
+            "sets": agg.get(key, {}).get("sets"), "reps": agg.get(key, {}).get("reps"),
+            "usage_count": agg.get(key, {}).get("usage_count", 0), "source": "manual",
+        }
+
+    out = list(agg.values())
+    out.sort(key=lambda e: (-e["usage_count"], e["name"].lower()))
+    return out
+
+
+@router.post("/exercise-library", status_code=201)
+async def add_exercise(body: ExerciseBody, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    existing = await db.exercise_library.find_one(
+        {"coach_id": user["user_id"], "name": body.name.strip()}, {"_id": 0}
+    )
+    if existing:
+        await db.exercise_library.update_one(
+            {"id": existing["id"]}, {"$set": {"note": body.note.strip()}}
+        )
+        return {"ok": True, "id": existing["id"]}
+    ex = {
+        "id": f"lib_{uuid.uuid4().hex[:12]}",
+        "coach_id": user["user_id"],
+        "name": body.name.strip(),
+        "note": body.note.strip(),
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.exercise_library.insert_one(dict(ex))
+    return {"ok": True, "id": ex["id"]}
+
+
+@router.delete("/exercise-library/{ex_id}")
+async def delete_exercise(ex_id: str, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    await db.exercise_library.delete_one({"id": ex_id, "coach_id": user["user_id"]})
     return {"ok": True}
 
 

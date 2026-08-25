@@ -35,6 +35,48 @@ class ThemeBody(BaseModel):
     theme_color: str = Field(pattern="^#[0-9A-Fa-f]{6}$")
 
 
+DASHBOARD_SECTIONS = ["stats", "quick_actions", "needs_attention", "inbox_preview", "recent_activity"]
+
+
+def _default_layout() -> list[dict]:
+    return [{"key": k, "visible": True} for k in DASHBOARD_SECTIONS]
+
+
+class DashboardLayoutBody(BaseModel):
+    sections: list[dict] = Field(default_factory=list)
+
+
+@router.get("/me/dashboard-layout")
+async def get_dashboard_layout(user: dict = Depends(get_current_user)):
+    saved = user.get("dashboard_layout")
+    if not saved:
+        return {"sections": _default_layout()}
+    # ensure any newly-added sections appear (appended, visible)
+    known = {s["key"] for s in saved if s.get("key") in DASHBOARD_SECTIONS}
+    merged = [s for s in saved if s.get("key") in DASHBOARD_SECTIONS]
+    for k in DASHBOARD_SECTIONS:
+        if k not in known:
+            merged.append({"key": k, "visible": True})
+    return {"sections": merged}
+
+
+@router.put("/me/dashboard-layout")
+async def set_dashboard_layout(body: DashboardLayoutBody, user: dict = Depends(get_current_user)):
+    clean, seen = [], set()
+    for s in body.sections:
+        key = s.get("key")
+        if key in DASHBOARD_SECTIONS and key not in seen:
+            seen.add(key)
+            clean.append({"key": key, "visible": bool(s.get("visible", True))})
+    for k in DASHBOARD_SECTIONS:
+        if k not in seen:
+            clean.append({"key": k, "visible": True})
+    await db.users.update_one(
+        {"user_id": user["user_id"]}, {"$set": {"dashboard_layout": clean}}
+    )
+    return {"sections": clean}
+
+
 @router.put("/me/theme")
 async def set_theme(body: ThemeBody, user: dict = Depends(get_current_user)):
     await db.users.update_one(

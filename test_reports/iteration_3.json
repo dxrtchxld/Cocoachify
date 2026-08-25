@@ -1,0 +1,44 @@
+{
+  "summary": "Co-Coachify PHASE 3 (five new features) full test pass. Backend: 17/17 pytest tests green in /app/backend/tests/test_phase3.py against the REAL migrated coach jcgfit@gmail.com (61 programs, 13 clients, 52 check-ins). Coverage: (1) POST /coach/inbox/{log_id}/reply — inserts message coach->client (verified via GET /chat/{peer}/messages), marks reviewed=True and stores coach_reply on the log; 422 on empty text; 404 on unknown log; 403 for client role. (2) GET /coach/exercise-library — returns 200+ distinct exercises aggregated from coaching_sessions with usage_count sorted desc, source='program'; POST creates 'manual' entry (id lib_...) and DELETE removes it; 403 for client; 422 on empty name. (3) GET /coach/clients/{id} now returns streak (int>=0), total_checkins, week_checkins, last_active ISO string (or null); 404 for unrelated client. (4) POST /programs/{id}/duplicate — creates new prog_ id, name '... (Copy)', owner_id=coach, is_template False, session ids are freshly copied (disjoint from source); 404 unknown; 403 client. (5) GET /me/dashboard-layout returns default 5 sections all visible in order [stats, quick_actions, needs_attention, inbox_preview, recent_activity]; PUT persists reorder+hide, unknown keys are dropped, missing canonical keys appended; 401 without auth. Frontend (Expo web, mobile viewport 390x844): logged in as jcgfit; (A) Home shows 'FITNESS COACH HQ', stats 13 CLIENTS / 61 PROGRAMS, quick actions Invite/New Program/Exercise Library, header 'options' icon testID customize-dashboard-btn present. (B) customize-dashboard-btn -> /dashboard-customize renders 5 rows with up-<key>, down-<key>, toggle-<key>; toggling stats OFF and moving recent_activity UP + Save (save-layout-btn) -> Home no longer renders stats row and RECENT ACTIVITY now sits above NEW CHECK-INS. Reset to defaults confirmed persistence works both directions. (C) Inbox tab renders 52 items; tapping reply-<log_id> expands composer with reply-input-<log_id> and send-reply-<log_id>; sending 'TEST_p3_UI reply ...' shows 'You replied: ...' green preview + card flips to Reviewed. (D) /exercise-library screen: search filters by name (typed 'squat' matched), add-exercise-btn opens modal (exercise-name-input, exercise-note-input, save-exercise-btn), added entry appears with SAVED chip, delete-exercise-<id> removes it. (E) /client/<id> for the real client Jeremy C Gillespie shows PROGRESS card with 0 DAY STREAK / 0 THIS WEEK / 4 TOTAL and 'Last active Jul 7' — streak legitimately 0 because migrated data is from July 2025 (expected per agent note). (F) On coach-owned program /program/strength_mobility_block_1, header duplicate-program-btn creates a copy and navigates to /program/prog_e2e0f3e0e096 titled '4-Week Strength & Mobility - Block 1 (Copy)' with all 7-day schedule copied — test cleaned up the duplicate afterward.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase3.py",
+    "/app/test_reports/pytest/phase3_results.xml"
+  ],
+  "action_items": [
+    "No blocking issues found. All 5 new features (inbox reply, exercise library, client progress, program duplicate, customize dashboard) are working correctly at both API and UI layers."
+  ],
+  "critical_code_review_comments": [
+    "routes_coach.py::reply_checkin correctly guards with require_coach + coach_id match (403 for non-owner). Message payload is minted with uuid msg_ prefix and coach_reply is stored alongside reviewed=True in the log — atomic in one $set. Good.",
+    "routes_coach.py::exercise_library merges auto-aggregated sessions with manual entries by lowercase-name key; usage_count is preserved when a manual entry overrides an auto one — sensible. Sort by (-usage_count, name) is stable.",
+    "routes_coach.py::_checkin_stats naive streak computation walks backwards from today (or yesterday if no log today) — matches dashboard streak logic in routes_misc.py. Both use _aware helper consistently. No timezone divergence risk.",
+    "routes_programs.py::duplicate_program correctly re-owns each referenced session (owner_id=coach) with a fresh ses_ id and new schedule mapping — no reference leakage. is_template hardcoded False on the copy (prevents accidental template propagation). Name suffix trims to 100 chars.",
+    "routes_misc.py::dashboard-layout PUT sanitizes unknown keys, dedupes, and appends any missing canonical sections with visible=True — schema-safe. The saved doc is a plain list of {key,visible} — no _id leakage.",
+    "Frontend CoachHome.tsx pulls layout in parallel with stats/clients/activity/inbox in one Promise.all — good. Uses layout.sections?.length ? layout.sections : DEFAULT_LAYOUT as safe fallback. renderSection switch matches all 5 keys.",
+    "dashboard-customize.tsx uses simple up/down arrow reorder without library — clean. Switch component uses correct trackColor. save-layout-btn calls PUT then router.back() so returning to Home re-runs load() via useFocusEffect and reflects new layout.",
+    "exercise-library.tsx uses Modal + KeyboardAvoidingView for the add sheet; testIDs correct. On delete, does optimistic removal with fallback re-load on error — resilient.",
+    "program/[id].tsx: duplicate handler uses router.replace so back button doesn't send you back to the source program (better UX). Owner check (isOwner) hides duplicate/edit/delete icons for clients — correct.",
+    "inbox.tsx composer is inline per-card (not modal) so multiple rows keep independent state via replyingId — good. Optimistic UI updates coach_reply and reviewed locally after send. No _id leakage in payloads."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase3.py (new — 17 pytest tests for the 5 new features)"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 Phase 3 + all prior Phase 1+2 tests still green)",
+    "frontend": "100% (all 5 flows verified end-to-end on real migrated data)"
+  },
+  "seed_data_creation": "During UI testing on the REAL coach jcgfit account: (a) One inbox check-in got a coach_reply ('TEST_p3_UI reply <ts>') and was marked reviewed; the corresponding chat message was inserted into db.messages. (b) One manual exercise-library entry ('TEST_UI_ex_701164') was added and then deleted. (c) One dashboard-layout mutation was performed then reset to defaults (all 5 sections visible in canonical order). (d) One program duplicate ('4-Week Strength & Mobility - Block 1 (Copy)') was created and then deleted via the UI trash button. pytest also creates+deletes a program duplicate per run and an exercise-library manual entry per run (TEST_p3_ex_<hex>) — both are self-cleaned.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 3 is fully green. Test artifacts left on the jcgfit account: (a) at least one inbox check-in is marked reviewed with coach_reply text 'TEST_p3_UI reply ...' — this is fine, review status is server-side. (b) A couple of chat messages from coach to jenny D (the log's owner) with 'TEST_p3 auto-reply <hex>' text (from pytest runs). (c) Dashboard layout was left at defaults (all visible, canonical order). If the next task adds more sections to DEFAULT_LAYOUT, extend TestDashboardLayout.test_get_default_layout accordingly. All new /exercise-library and /dashboard-customize screens are auto-discovered by expo-router with no Stack registration needed — verified by successful navigation via router.push and direct URL.",
+  "rca_of_issue": "N/A — no failures. During UI testing an initial attempt to visit /client/<wrong-id> returned 'Client not found' as expected because I used the wrong Firestore user_id. Once the correct client user_id AxLLieuUbwV10mSwfdu741aCOFu2 (returned by /api/auth/login for ilovejeremygillespie@gmail.com) was used, the progress card rendered correctly with 0/0/4 numbers and 'Last active Jul 7' — matching the migrated data."
+}

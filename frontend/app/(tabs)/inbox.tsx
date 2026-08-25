@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -25,6 +26,7 @@ type CheckIn = {
   date: string;
   urgency: "urgent" | "watch" | "normal";
   reviewed: boolean;
+  coach_reply?: string | null;
 };
 
 const FILTERS = ["all", "new", "urgent", "watch"] as const;
@@ -34,6 +36,9 @@ export default function Inbox() {
   const [items, setItems] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +62,29 @@ export default function Inbox() {
       await api(`/coach/inbox/${id}/review`, { method: "POST" });
     } catch {
       load();
+    }
+  };
+
+  const openReply = (id: string) => {
+    setReplyingId((cur) => (cur === id ? null : id));
+    setReplyText("");
+  };
+
+  const sendReply = async (id: string) => {
+    if (!replyText.trim()) return;
+    setSending(true);
+    try {
+      await api(`/coach/inbox/${id}/reply`, { method: "POST", body: { text: replyText.trim() } });
+      const sent = replyText.trim();
+      setItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, reviewed: true, coach_reply: sent } : i)),
+      );
+      setReplyingId(null);
+      setReplyText("");
+    } catch {
+      // keep composer open
+    } finally {
+      setSending(false);
     }
   };
 
@@ -143,14 +171,22 @@ export default function Inbox() {
                 {item.rpe ? ` · RPE ${item.rpe}` : ""}
               </Text>
               {item.notes ? <Text style={styles.notes}>&ldquo;{item.notes}&rdquo;</Text> : null}
+              {item.coach_reply ? (
+                <View style={styles.replyPreview}>
+                  <Ionicons name="return-down-forward" size={14} color={colors.success} />
+                  <Text style={styles.replyPreviewText}>You replied: {item.coach_reply}</Text>
+                </View>
+              ) : null}
               <View style={styles.actions}>
                 <TouchableOpacity
                   testID={`reply-${item.id}`}
                   style={styles.actionBtn}
-                  onPress={() => router.push({ pathname: "/chat/[id]", params: { id: item.user_id } })}
+                  onPress={() => openReply(item.id)}
                 >
                   <Ionicons name="chatbubble-ellipses" size={15} color={colors.brand} />
-                  <Text style={[styles.actionText, { color: colors.brand }]}>Reply</Text>
+                  <Text style={[styles.actionText, { color: colors.brand }]}>
+                    {replyingId === item.id ? "Cancel" : "Reply"}
+                  </Text>
                 </TouchableOpacity>
                 {!item.reviewed ? (
                   <TouchableOpacity
@@ -168,6 +204,32 @@ export default function Inbox() {
                   </View>
                 )}
               </View>
+              {replyingId === item.id && (
+                <View style={styles.composer}>
+                  <TextInput
+                    testID={`reply-input-${item.id}`}
+                    style={styles.replyInput}
+                    value={replyText}
+                    onChangeText={setReplyText}
+                    placeholder={`Message ${item.client_name ?? "client"}...`}
+                    placeholderTextColor={colors.onSurfaceSecondary}
+                    multiline
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    testID={`send-reply-${item.id}`}
+                    style={[styles.sendBtn, (!replyText.trim() || sending) && { opacity: 0.5 }]}
+                    onPress={() => sendReply(item.id)}
+                    disabled={!replyText.trim() || sending}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color={colors.onBrand} />
+                    ) : (
+                      <Ionicons name="send" size={16} color={colors.onBrand} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         />
@@ -225,4 +287,43 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: spacing.xl, marginTop: spacing.md },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 5, minHeight: 32 },
   actionText: { fontFamily: fonts.semiBold, fontSize: 12.5, color: colors.onSurfaceSecondary },
+  replyPreview: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: spacing.sm,
+    backgroundColor: "rgba(50,215,75,0.08)",
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+  },
+  replyPreviewText: { flex: 1, fontFamily: fonts.medium, fontSize: 12, color: colors.onSurfaceTertiary, lineHeight: 17 },
+  composer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  replyInput: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    color: colors.onSurface,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    backgroundColor: colors.surface,
+  },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

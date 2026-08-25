@@ -36,6 +36,25 @@ type Activity = {
   notes: string | null;
   date: string;
 };
+type CheckIn = {
+  id: string;
+  user_id: string;
+  client_name: string | null;
+  session_name: string | null;
+  notes: string | null;
+  date: string;
+  urgency: "urgent" | "watch" | "normal";
+  reviewed: boolean;
+};
+type Section = { key: string; visible: boolean };
+
+const DEFAULT_LAYOUT: Section[] = [
+  { key: "stats", visible: true },
+  { key: "quick_actions", visible: true },
+  { key: "needs_attention", visible: true },
+  { key: "inbox_preview", visible: true },
+  { key: "recent_activity", visible: true },
+];
 
 export default function CoachHome() {
   const insets = useSafeAreaInsets();
@@ -43,19 +62,25 @@ export default function CoachHome() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [inbox, setInbox] = useState<CheckIn[]>([]);
+  const [layout, setLayout] = useState<Section[]>(DEFAULT_LAYOUT);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [s, c, a] = await Promise.all([
+      const [s, c, a, ib, lay] = await Promise.all([
         api<Stats>("/coach/stats"),
         api<Client[]>("/coach/clients"),
         api<Activity[]>("/coach/activity"),
+        api<CheckIn[]>("/coach/inbox"),
+        api<{ sections: Section[] }>("/me/dashboard-layout"),
       ]);
       setStats(s);
       setClients(c);
       setActivity(a);
+      setInbox(ib);
+      setLayout(lay.sections?.length ? lay.sections : DEFAULT_LAYOUT);
     } catch {
       // keep last state
     } finally {
@@ -79,6 +104,177 @@ export default function CoachHome() {
   }
 
   const needsAttention = clients.filter((c) => c.status !== "on_track");
+  const newCheckins = inbox.filter((i) => !i.reviewed);
+
+  const renderSection = (key: string) => {
+    switch (key) {
+      case "stats":
+        return (
+          <View key={key} style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Ionicons name="people" size={20} color={colors.brand} />
+              <Text style={styles.statValue}>{stats?.clients ?? 0}</Text>
+              <Text style={styles.statLabel}>CLIENTS</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="albums" size={20} color={colors.brand} />
+              <Text style={styles.statValue}>{stats?.programs ?? 0}</Text>
+              <Text style={styles.statLabel}>PROGRAMS</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="sparkles" size={20} color={colors.brand} />
+              <Text style={styles.statValue}>{stats?.active_pct ?? 0}%</Text>
+              <Text style={styles.statLabel}>ACTIVE</Text>
+            </View>
+          </View>
+        );
+      case "quick_actions":
+        return (
+          <View key={key} style={styles.quickRow}>
+            <TouchableOpacity
+              testID="quick-invite"
+              style={styles.quickCard}
+              activeOpacity={0.8}
+              onPress={() => router.push("/invite")}
+            >
+              <Ionicons name="qr-code" size={20} color={colors.brand} />
+              <Text style={styles.quickText}>Invite Client</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="quick-new-program"
+              style={styles.quickCard}
+              activeOpacity={0.8}
+              onPress={() => router.push("/program-editor")}
+            >
+              <Ionicons name="add-circle" size={20} color={colors.brand} />
+              <Text style={styles.quickText}>New Program</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="quick-library"
+              style={styles.quickCard}
+              activeOpacity={0.8}
+              onPress={() => router.push("/exercise-library")}
+            >
+              <Ionicons name="barbell" size={20} color={colors.brand} />
+              <Text style={styles.quickText}>Exercise Library</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      case "needs_attention":
+        return (
+          <View key={key}>
+            <View style={styles.sectionRow}>
+              <Ionicons name="alert-circle" size={16} color={colors.brand} />
+              <Text style={styles.sectionTitle}>NEEDS ATTENTION ({needsAttention.length})</Text>
+            </View>
+            {needsAttention.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>Nothing needs attention right now.</Text>
+              </View>
+            ) : (
+              needsAttention.slice(0, 5).map((c) => (
+                <TouchableOpacity
+                  key={c.user_id}
+                  testID={`attention-${c.user_id}`}
+                  style={styles.clientRow}
+                  activeOpacity={0.7}
+                  onPress={() => router.push({ pathname: "/client/[id]", params: { id: c.user_id } })}
+                >
+                  <View style={styles.miniAvatar}>
+                    <Text style={styles.miniAvatarText}>{(c.name || "C")[0].toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.clientName}>{c.name}</Text>
+                    <Text style={styles.clientSub}>
+                      {c.status === "no_program" ? "No active program" : "No recent check-ins"}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusChip, c.status === "behind" ? styles.chipBehind : styles.chipNone]}>
+                    <Text style={styles.statusChipText}>
+                      {c.status === "behind" ? "Behind" : "Assign"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        );
+      case "inbox_preview":
+        return (
+          <View key={key}>
+            <View style={styles.sectionRow}>
+              <Ionicons name="mail-unread" size={16} color={colors.brand} />
+              <Text style={styles.sectionTitle}>NEW CHECK-INS ({newCheckins.length})</Text>
+            </View>
+            {newCheckins.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>You&apos;re all caught up. 🎉</Text>
+              </View>
+            ) : (
+              newCheckins.slice(0, 4).map((i) => (
+                <TouchableOpacity
+                  key={i.id}
+                  testID={`home-checkin-${i.id}`}
+                  style={styles.clientRow}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(tabs)/inbox")}
+                >
+                  <Ionicons
+                    name={i.urgency === "urgent" ? "warning" : "chatbox-ellipses"}
+                    size={18}
+                    color={i.urgency === "urgent" ? colors.error : colors.brand}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.clientName}>{i.client_name}</Text>
+                    <Text style={styles.clientSub} numberOfLines={1}>
+                      {i.notes || i.session_name || "Completed a check-in"}
+                    </Text>
+                  </View>
+                  <Text style={styles.activityDate}>{formatDate(i.date)}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        );
+      case "recent_activity":
+        return (
+          <View key={key}>
+            <View style={styles.sectionRow}>
+              <Ionicons name="pulse" size={16} color={colors.brand} />
+              <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
+            </View>
+            {activity.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>Client check-ins will appear here.</Text>
+              </View>
+            ) : (
+              activity.slice(0, 8).map((a) => (
+                <View key={a.id} style={styles.activityRow}>
+                  <Ionicons
+                    name={a.log_type === "body" ? "scale" : "checkmark-circle"}
+                    size={18}
+                    color={colors.success}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.activityText}>
+                      <Text style={{ fontFamily: fonts.bold }}>{a.client_name}</Text>
+                      {a.log_type === "body"
+                        ? ` logged ${a.weight} kg`
+                        : ` completed ${a.session_name ?? "a workout"}`}
+                      {a.rpe ? ` · RPE ${a.rpe}` : ""}
+                    </Text>
+                    {a.notes ? <Text style={styles.activityNotes}>&ldquo;{a.notes}&rdquo;</Text> : null}
+                  </View>
+                  <Text style={styles.activityDate}>{formatDate(a.date)}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -106,125 +302,17 @@ export default function CoachHome() {
               Today&apos;s triage — which {vocabFor(user?.coach_specialty).clientWord} need you first.
             </Text>
           </View>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="people" size={20} color={colors.brand} />
-            <Text style={styles.statValue}>{stats?.clients ?? 0}</Text>
-            <Text style={styles.statLabel}>CLIENTS</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="albums" size={20} color={colors.brand} />
-            <Text style={styles.statValue}>{stats?.programs ?? 0}</Text>
-            <Text style={styles.statLabel}>PROGRAMS</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="sparkles" size={20} color={colors.brand} />
-            <Text style={styles.statValue}>{stats?.active_pct ?? 0}%</Text>
-            <Text style={styles.statLabel}>ACTIVE</Text>
-          </View>
-        </View>
-
-        {/* Quick actions */}
-        <View style={styles.quickRow}>
           <TouchableOpacity
-            testID="quick-invite"
-            style={styles.quickCard}
+            testID="customize-dashboard-btn"
+            style={styles.customizeBtn}
             activeOpacity={0.8}
-            onPress={() => router.push("/invite")}
+            onPress={() => router.push("/dashboard-customize")}
           >
-            <Ionicons name="qr-code" size={20} color={colors.brand} />
-            <Text style={styles.quickText}>Invite Client</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID="quick-new-program"
-            style={styles.quickCard}
-            activeOpacity={0.8}
-            onPress={() => router.push("/program-editor")}
-          >
-            <Ionicons name="add-circle" size={20} color={colors.brand} />
-            <Text style={styles.quickText}>New Program</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID="quick-new-session"
-            style={styles.quickCard}
-            activeOpacity={0.8}
-            onPress={() => router.push("/session-editor")}
-          >
-            <Ionicons name="construct" size={20} color={colors.brand} />
-            <Text style={styles.quickText}>New Session</Text>
+            <Ionicons name="options" size={20} color={colors.onSurface} />
           </TouchableOpacity>
         </View>
 
-        {/* Needs attention */}
-        <View style={styles.sectionRow}>
-          <Ionicons name="alert-circle" size={16} color={colors.brand} />
-          <Text style={styles.sectionTitle}>NEEDS ATTENTION ({needsAttention.length})</Text>
-        </View>
-        {needsAttention.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Nothing needs attention right now.</Text>
-          </View>
-        ) : (
-          needsAttention.slice(0, 5).map((c) => (
-            <TouchableOpacity
-              key={c.user_id}
-              testID={`attention-${c.user_id}`}
-              style={styles.clientRow}
-              activeOpacity={0.7}
-              onPress={() => router.push({ pathname: "/client/[id]", params: { id: c.user_id } })}
-            >
-              <View style={styles.miniAvatar}>
-                <Text style={styles.miniAvatarText}>{(c.name || "C")[0].toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.clientName}>{c.name}</Text>
-                <Text style={styles.clientSub}>
-                  {c.status === "no_program" ? "No active program" : "No recent check-ins"}
-                </Text>
-              </View>
-              <View style={[styles.statusChip, c.status === "behind" ? styles.chipBehind : styles.chipNone]}>
-                <Text style={styles.statusChipText}>
-                  {c.status === "behind" ? "Behind" : "Assign"}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-
-        {/* Recent activity */}
-        <View style={styles.sectionRow}>
-          <Ionicons name="pulse" size={16} color={colors.brand} />
-          <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-        </View>
-        {activity.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Client check-ins will appear here.</Text>
-          </View>
-        ) : (
-          activity.slice(0, 8).map((a) => (
-            <View key={a.id} style={styles.activityRow}>
-              <Ionicons
-                name={a.log_type === "body" ? "scale" : "checkmark-circle"}
-                size={18}
-                color={colors.success}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.activityText}>
-                  <Text style={{ fontFamily: fonts.bold }}>{a.client_name}</Text>
-                  {a.log_type === "body"
-                    ? ` logged ${a.weight} kg`
-                    : ` completed ${a.session_name ?? "a workout"}`}
-                  {a.rpe ? ` · RPE ${a.rpe}` : ""}
-                </Text>
-                {a.notes ? <Text style={styles.activityNotes}>&ldquo;{a.notes}&rdquo;</Text> : null}
-              </View>
-              <Text style={styles.activityDate}>{formatDate(a.date)}</Text>
-            </View>
-          ))
-        )}
+        {layout.filter((s) => s.visible).map((s) => renderSection(s.key))}
 
         {clients.length > 0 && (
           <TouchableOpacity
@@ -249,7 +337,18 @@ function formatDate(iso: string): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  header: { paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  header: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  customizeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: spacing.md,
+  },
   title: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface, letterSpacing: 1 },
   sub: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 4 },
   statsRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl },
