@@ -20,6 +20,8 @@ export type User = {
   name: string;
   picture: string | null;
   role: "coach" | "client" | null;
+  coach_specialty: string | null;
+  theme_color: string | null;
   is_coach: boolean;
   is_premium: boolean;
   coach_id: string | null;

@@ -47,6 +47,8 @@ def user_public(user: dict) -> dict:
         "name": user.get("name") or user["email"].split("@")[0],
         "picture": user.get("picture"),
         "role": user.get("role"),
+        "coach_specialty": user.get("coach_specialty"),
+        "theme_color": user.get("theme_color"),
         "is_coach": user.get("role") == "coach",
         "is_premium": user.get("is_premium", False),
         "coach_id": user.get("coach_id"),

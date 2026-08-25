@@ -13,13 +13,25 @@ export default function RoleSelect() {
   const insets = useSafeAreaInsets();
   const { refreshUser } = useAuth();
   const [role, setRole] = useState<"coach" | "client" | null>(null);
+  const [specialty, setSpecialty] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const SPECIALTIES = [
+    { id: "fitness", label: "💪 Fitness" },
+    { id: "yoga", label: "🧘 Yoga" },
+    { id: "breathwork", label: "🌬️ Breathwork" },
+    { id: "mobility", label: "🤸 Mobility" },
+    { id: "mindfulness", label: "🌿 Mindfulness" },
+  ];
 
   const confirm = async () => {
     if (!role) return;
     setBusy(true);
     try {
-      await api("/me/role", { method: "POST", body: { role } });
+      await api("/me/role", {
+        method: "POST",
+        body: { role, specialty: role === "coach" ? specialty : undefined },
+      });
       await refreshUser();
       router.replace(role === "client" ? "/onboarding" : "/(tabs)");
     } catch {
@@ -50,6 +62,26 @@ export default function RoleSelect() {
         </View>
         {role === "coach" && <Ionicons name="checkmark-circle" size={24} color={colors.brand} />}
       </TouchableOpacity>
+
+      {role === "coach" && (
+        <View style={styles.specialtyWrap}>
+          <Text style={styles.specialtyLabel}>YOUR SPECIALTY</Text>
+          <View style={styles.chipRow}>
+            {SPECIALTIES.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                testID={`specialty-${s.id}`}
+                style={[styles.chip, specialty === s.id && styles.chipActive]}
+                onPress={() => setSpecialty(s.id)}
+              >
+                <Text style={[styles.chipText, specialty === s.id && { color: colors.onSurface }]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       <TouchableOpacity
         testID="role-client"
@@ -109,4 +141,24 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.onSurface },
   cardSub: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.onSurfaceSecondary, marginTop: 3 },
+  specialtyWrap: { marginTop: spacing.sm },
+  specialtyLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    color: colors.onSurfaceSecondary,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  chip: {
+    paddingHorizontal: spacing.md,
+    minHeight: 42,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  chipActive: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
+  chipText: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.onSurfaceSecondary },
 });

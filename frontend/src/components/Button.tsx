@@ -44,7 +44,7 @@ export default function Button({
       onPress={handlePress}
       style={[
         styles.base,
-        variant === "primary" && styles.primary,
+        variant === "primary" && { backgroundColor: colors.brand },
         variant === "secondary" && styles.secondary,
         variant === "ghost" && styles.ghost,
         (disabled || loading) && styles.disabled,
@@ -57,7 +57,7 @@ export default function Button({
         <Text
           style={[
             styles.text,
-            variant === "primary" ? styles.textPrimary : styles.textOther,
+            variant === "primary" ? { color: colors.onBrand } : styles.textOther,
           ]}
         >
           {title}
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
-  primary: { backgroundColor: colors.brand },
+  primary: {},
   secondary: {
     backgroundColor: colors.surfaceTertiary,
     borderWidth: 1,
@@ -84,6 +84,5 @@ const styles = StyleSheet.create({
   ghost: { backgroundColor: "transparent" },
   disabled: { opacity: 0.5 },
   text: { fontFamily: fonts.bold, fontSize: 16 },
-  textPrimary: { color: colors.onBrand },
   textOther: { color: colors.onSurface },
 });

@@ -18,15 +18,98 @@ def _aware(dt: datetime) -> datetime:
 
 class RoleBody(BaseModel):
     role: str = Field(pattern="^(coach|client)$")
+    specialty: str | None = Field(default=None, pattern="^(fitness|breathwork|yoga|mobility|mindfulness)$")
 
 
 @router.post("/me/role")
 async def set_role(body: RoleBody, user: dict = Depends(get_current_user)):
+    update: dict = {"role": body.role}
+    if body.role == "coach" and body.specialty:
+        update["coach_specialty"] = body.specialty
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": update})
+    updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return user_public(updated)
+
+
+class ThemeBody(BaseModel):
+    theme_color: str = Field(pattern="^#[0-9A-Fa-f]{6}$")
+
+
+@router.put("/me/theme")
+async def set_theme(body: ThemeBody, user: dict = Depends(get_current_user)):
     await db.users.update_one(
-        {"user_id": user["user_id"]}, {"$set": {"role": body.role}}
+        {"user_id": user["user_id"]}, {"$set": {"theme_color": body.theme_color}}
     )
     updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return user_public(updated)
+
+
+AFFIRMATIONS = [
+    "Consistency beats intensity. Show up today.",
+    "Your body achieves what your mind believes.",
+    "Small daily wins build unstoppable momentum.",
+    "Strong is built one rep at a time.",
+    "Discipline is choosing what you want most over what you want now.",
+    "Rest is part of the work. Recover with intention.",
+    "You don't have to be extreme, just consistent.",
+    "Progress, not perfection.",
+    "Energy flows where attention goes. Focus on today.",
+    "You are one workout away from a better mood.",
+    "Trust the process. Your coach sees the path.",
+    "Breathe deep. Move well. Live strong.",
+    "Every check-in is a promise kept to yourself.",
+    "Champions are made when nobody is watching.",
+    "Your future self is watching. Make them proud.",
+    "Hydrate, move, sleep, repeat.",
+    "Motivation gets you started. Habit keeps you going.",
+    "Today's effort is tomorrow's strength.",
+    "Be stronger than your strongest excuse.",
+    "The best project you'll ever work on is you.",
+    "Don't count the days. Make the days count.",
+    "Fall in love with the process and results will follow.",
+    "One day or day one. You decide.",
+    "Slow progress is still progress.",
+    "Your only competition is who you were yesterday.",
+    "Move your body, clear your mind.",
+]
+
+
+def _today_key() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+class HabitsBody(BaseModel):
+    water_count: int | None = Field(default=None, ge=0, le=30)
+    affirmation_done: bool | None = None
+
+
+@router.get("/habits/today")
+async def get_habits(user: dict = Depends(get_current_user)):
+    key = _today_key()
+    doc = await db.daily_habits.find_one(
+        {"user_id": user["user_id"], "date": key}, {"_id": 0}
+    )
+    day_of_year = datetime.now(timezone.utc).timetuple().tm_yday
+    return {
+        "date": key,
+        "water_count": doc.get("water_count", 0) if doc else 0,
+        "water_goal": 8,
+        "affirmation_done": doc.get("affirmation_done", False) if doc else False,
+        "affirmation_text": AFFIRMATIONS[day_of_year % len(AFFIRMATIONS)],
+    }
+
+
+@router.put("/habits/today")
+async def update_habits(body: HabitsBody, user: dict = Depends(get_current_user)):
+    key = _today_key()
+    update = {k: v for k, v in body.model_dump().items() if v is not None}
+    if update:
+        await db.daily_habits.update_one(
+            {"user_id": user["user_id"], "date": key},
+            {"$set": update, "$setOnInsert": {"user_id": user["user_id"], "date": key}},
+            upsert=True,
+        )
+    return await get_habits(user)
 
 
 class OnboardingBody(BaseModel):

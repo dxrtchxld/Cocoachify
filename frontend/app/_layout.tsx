@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/src/context/AuthContext";
+import { ThemeProvider, useTheme } from "@/src/context/ThemeContext";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
 
@@ -43,25 +44,34 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <View style={{ flex: 1, backgroundColor: colors.surface }}>
-            <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.surface },
-              }}
-            >
-              <Stack.Screen name="index" />
-              <Stack.Screen name="login" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="paywall" options={{ presentation: "modal" }} />
-              <Stack.Screen name="role-select" />
-              <Stack.Screen name="onboarding" />
-              <Stack.Screen name="invite" />
-            </Stack>
-          </View>
+          <ThemeProvider>
+            <ThemedApp />
+          </ThemeProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function ThemedApp() {
+  const { version } = useTheme();
+  return (
+    <View key={version} style={{ flex: 1, backgroundColor: colors.surface }}>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.surface },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="paywall" options={{ presentation: "modal" }} />
+        <Stack.Screen name="role-select" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="invite" />
+      </Stack>
+    </View>
   );
 }

@@ -1,0 +1,50 @@
+{
+  "summary": "Co-Coachify PHASE 2 full test pass. Backend: 21/21 pytest tests pass covering (a) chat send/get between coach<->client incl. 403 for unrelated users, 422 for empty text, 404 for unknown peer; (b) coach inbox with correct urgency computation (RPE 9 + 'pain' -> urgent, RPE 8 -> watch, RPE 6 -> normal), review toggling reviewed=true, and client 403 authz; (c) daily habits GET default (water 0, water_goal 8, affirmation_done false, affirmation_text present) + PUT water_count + PUT affirmation_done both persist and pass validation (422 on water<0 and water>30); (d) coach specialty set via POST /me/role with specialty fitness/yoga/breathwork/... and 422 on invalid; (e) AI program import — coach-only (403 for client), graceful 502 on bad base64, and a REAL image test where PIL rendered a 3-day workout plan PNG was parsed successfully by gpt-5.4 vision into program_id + sessions_created>=1 and persisted (GET /programs/{id} returned 7-day schedule); (f) regression smoke — root /api/, coach.demo login+/me (role coach, is_coach true), client.demo login+/dashboard, /coach/clients all 200. Frontend (Expo web, mobile viewport 390x844): (1) Login screen shows CC logo (assets/images/cc-logo.png), 'CO-COACHIFY' brand title and tagline 'Your Coaching Assistant' — no stock person photos. (2) coach.demo login lands on coach tabs (Home/Clients/Inbox/Programs/Settings). Inbox tab renders 'INBOX' header, filter chips All (1) / New (1) / Urgent (0) / Watch (1) — all four testIDs filter-all/new/urgent/watch present and clickable. Reply from an inbox item routes to /chat/<clientId>, message 'Hello from testing agent' sent via chat-input+send-btn and appears in bubble list. (3) Direct nav to /program-import renders 'IMPORT PROGRAM' title, mentions 'Google Drive' in copy, pick-library and extract-btn are present. (4) Word 'Practitioner' NOT found on /login, /(tabs), /(tabs)/settings, /(tabs)/programs, /(tabs)/inbox, /(tabs)/clients, or client /(tabs), /(tabs)/progress, /(tabs)/settings. (5) client.demo login shows Today screen with 1 Day Streak, DAY 2/7 Rest Day card, and 'DAILY HABITS' section with Water card (counter 6/8 after taps, persisted through reload) and Daily Affirmation card with today's text 'Strong is built one rep at a time.'; tapping affirmation-card marks 'Done today ✓' with a green border and PUT /api/habits/today returns 200 with affirmation_done=true. (6) Ask Coach FAB visible for connected clients — clicking navigates to /chat/<coachId>, prior coach message 'Hello from testing agent' visible in conversation, sending 'Client reply from test' appears in bubble list.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "program-import (mobile web preview)",
+        "issues": [
+          "Copy says 'including Google Drive via your device\\'s picker' but there is no textbox for pasting a Drive/external URL — the app relies on the OS file picker which does not directly accept Drive share URLs on the web preview. Users must download the file from Drive first. The review request explicitly asked to test the 'Google Drive URL variant', but no such endpoint or UI input exists. This may just be a mismatch between the request and the current implementation — not necessarily a bug — but flag for main agent to decide."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/phase2_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: If the product needs a Google-Drive-URL import path (per the review request), add a POST /api/programs/import-url endpoint that fetches the file server-side and add a URL TextInput on program-import.tsx. Currently only /programs/import-image (base64) exists and the UI has no URL field.",
+    "No blocking issues found for Phase 2. Main agent can move to next milestone.",
+    "Nice-to-have: the affirmation card on client Today is partially overlapped by the Ask Coach FAB on small viewports — the affirmation card still receives touches (verified) but on 390-wide viewport the FAB covers ~30% of the card's bottom-right corner. Consider adding bottom padding on the ScrollView content so the FAB never sits over cards."
+  ],
+  "critical_code_review_comments": [
+    "routes_chat.py _get_peer correctly enforces coach<->client relationship (403 for unrelated). Good.",
+    "routes_coach.py inbox urgency thresholds (rpe>=9 OR pain-words = urgent; rpe>=8 = watch; else normal) match frontend filter logic in inbox.tsx.",
+    "routes_misc.py habits use $setOnInsert for date/user_id — upsert is idempotent. water_count Field(ge=0, le=30) provides bounds. affirmation text rotates daily via day_of_year — deterministic and safe.",
+    "routes_import.py uses gpt-5.4 via emergentintegrations, strips markdown fences before json.loads, and validates category/difficulty against allow-list. Rounds max_day up to the next ALLOWED_LENGTHS (7/14/21/…) — good UX. Errors surface as 502 for AI failures and 422 for 'not_a_program'.",
+    "specialty is a subfield of the /me/role POST body — not a dedicated endpoint. This works but the naming is a bit awkward for 'update specialty later' — settings.tsx correctly re-POSTs /me/role with role:'coach', specialty:new. Consider a dedicated PUT /me/specialty for clarity.",
+    "No _id leakage detected — all queries project {_id: 0} or pop before returning."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase2.py (new — 21 pytest tests covering chat/inbox/habits/specialty/AI import/regression)"
+  ],
+  "success_rate": {
+    "backend": "100% (21/21 Phase 2 + prior 34/34 Phase 1 still green)",
+    "frontend": "100% (all Phase 2 flows working end-to-end)"
+  },
+  "seed_data_creation": "Created a few small test artifacts against the demo accounts: 1 chat thread between coach.demo <-> client.demo with 2-3 messages ('Hello from testing agent', 'Client reply from test', plus any earlier); water_count=6, affirmation_done reset to false at end. Ephemeral pytest users prefixed TEST_p2_* were also created (per Phase 1 policy of unique emails).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All Phase 2 backend + frontend features are green. Test artifacts to be aware of on the demo accounts: (a) client.demo has a workout log from Phase 1 that shows up in coach.demo's Inbox as 'WATCH' (RPE 8). (b) A short chat thread exists between coach.demo and client.demo. (c) client.demo daily habits row for today may have water_count>0. If the next task involves adding a /programs/import-url endpoint, extend test_phase2.py TestAIProgramImport with a URL-body variant and test invalid URL -> graceful 4xx.",
+  "rca_of_issue": "N/A — no blocking issues. During frontend testing, one interim false-negative was observed: tapping the affirmation card immediately after 3 rapid water-plus taps did not appear to persist. Root cause: the initial view had the affirmation card only partially visible on the 390x844 viewport, and the click hit registered before the state closure caught up. After scrolling the card fully into view (scroll_into_view_if_needed + 500ms settle) the click fired a PUT /api/habits/today with affirmation_done:true and the UI rendered 'Done today ✓'. This is a flaky test artifact, not an app bug — the underlying updateHabits code is correct."
+}

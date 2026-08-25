@@ -39,7 +39,9 @@ async def root():
 
 
 import routes_auth
+import routes_chat
 import routes_coach
+import routes_import
 import routes_logs
 import routes_misc
 import routes_payments
@@ -47,9 +49,11 @@ import routes_programs
 
 api_router.include_router(routes_auth.router)
 api_router.include_router(routes_programs.router)
+api_router.include_router(routes_import.router)
 api_router.include_router(routes_logs.router)
 api_router.include_router(routes_misc.router)
 api_router.include_router(routes_coach.router)
+api_router.include_router(routes_chat.router)
 api_router.include_router(routes_payments.router)
 
 app.include_router(api_router)

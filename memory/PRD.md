@@ -35,8 +35,13 @@ users (role, onboarding{goal,experience,days_per_week,focus,notes}, coach_id, is
 ## Test credentials: /app/memory/test_credentials.md
 
 ## NEXT (in priority order, defaults pending user confirmation)
-1. Import real data when user shares Flutter repo / Firestore export.
+1. ~~Import real data~~ ✅ DONE — migrated from Firestore (somatic-wealth) via /app/backend/scripts/migrate_firestore.py: 15 users (2 coaches, 13 clients), 89 programs, 437 sessions, 137 enrollments, 7 chat messages, 52 check-ins. Firestore UIDs kept as Mongo user_id/program id so Google login (by email) resolves migrated accounts.
 2. Coach Inbox (check-in review All/New/Urgent/Watch) + Exercise Library tool.
 3. Ask Coach chat, water counter, daily affirmation on client home.
 4. Group challenges, scheduling & bookings (self-book link).
 5. Brand & Dashboard Studio (theme customization).
+
+## Data migration notes
+- Script: /app/backend/scripts/migrate_firestore.py (idempotent: wipes content collections then re-inserts). Requires backend/scripts/serviceAccountKey.json (gitignored secret — user must rotate after).
+- Firestore schema: users/{uid}; coaches/{coachUid}/programs/{pid} with EMBEDDED sessions[] (each session has exercises[] using exerciseDefId ids → humanized names); assignments; coach_client_links (→ coach_id); connection_requests (name/email enrichment); messages (chat); checkins (→ client_logs workout, feeds Coach Inbox).
+- Exercise names derived by humanizing exerciseDefId (e.g. kettlebell_windmill → "Kettlebell Windmill"); real coaching detail lives in exercise notes → form_note.

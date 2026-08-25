@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -10,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Button from "@/src/components/Button";
 import { useAuth } from "@/src/context/AuthContext";
 import { api, BACKEND_URL } from "@/src/lib/api";
-import { colors, fonts, images, radius, spacing } from "@/src/theme";
+import { colors, fonts, radius, spacing } from "@/src/theme";
 
 const FEATURES = [
   { icon: "barbell", text: "Unlock every premium program, including Rowing Strength" },
@@ -65,9 +64,8 @@ export default function Paywall() {
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: images.premiumHero }} style={StyleSheet.absoluteFill} contentFit="cover" />
       <LinearGradient
-        colors={["rgba(18,18,20,0.55)", "rgba(18,18,20,0.85)", colors.surface]}
+        colors={[colors.brandTertiary, colors.surface]}
         style={StyleSheet.absoluteFill}
       />
       <TouchableOpacity

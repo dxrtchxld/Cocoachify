@@ -67,15 +67,25 @@ export default function Programs() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
         <Text style={styles.title}>PROGRAMS</Text>
         {isCoach && (
-          <TouchableOpacity
-            testID="new-program-btn"
-            style={styles.newBtn}
-            onPress={() => router.push("/program-editor")}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="add" size={18} color={colors.onBrand} />
-            <Text style={styles.newText}>New</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <TouchableOpacity
+              testID="import-program-btn"
+              style={styles.importBtn}
+              onPress={() => router.push("/program-import")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="camera" size={18} color={colors.onSurface} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="new-program-btn"
+              style={styles.newBtn}
+              onPress={() => router.push("/program-editor")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={18} color={colors.onBrand} />
+              <Text style={styles.newText}>New</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -200,6 +210,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   newText: { fontFamily: fonts.bold, fontSize: 14, color: colors.onBrand },
+  importBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",

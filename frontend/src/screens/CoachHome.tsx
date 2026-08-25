@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
+import { vocabFor } from "@/src/lib/vocab";
 import { colors, fonts, radius, spacing } from "@/src/theme";
 
 type Stats = { clients: number; programs: number; active_pct: number };
@@ -96,9 +97,13 @@ export default function CoachHome() {
       >
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>PRACTITIONER HOME</Text>
+            <Text style={styles.title}>
+              {vocabFor(user?.coach_specialty).emoji}{" "}
+              {user?.coach_specialty ? `${user.coach_specialty.toUpperCase()} ` : ""}
+              {vocabFor(user?.coach_specialty).homeTitle}
+            </Text>
             <Text style={styles.sub}>
-              Today&apos;s triage — who needs you, before the full roster.
+              Today&apos;s triage — which {vocabFor(user?.coach_specialty).clientWord} need you first.
             </Text>
           </View>
         </View>

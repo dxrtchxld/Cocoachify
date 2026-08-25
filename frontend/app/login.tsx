@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -19,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
 import { useAuth } from "@/src/context/AuthContext";
-import { colors, fonts, images, radius, spacing } from "@/src/theme";
+import { colors, fonts, logo, radius, spacing } from "@/src/theme";
 
 export default function Login() {
   const { user, loginWithGoogle, login, register } = useAuth();
@@ -76,16 +75,10 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.heroWrap}>
-        <Image source={{ uri: images.dashboardHero }} style={styles.hero} contentFit="cover" />
-        <LinearGradient
-          colors={["rgba(18,18,20,0.25)", "rgba(18,18,20,0.85)", colors.surface]}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[styles.heroContent, { paddingTop: insets.top + spacing.xxl }]}>
-          <Text style={styles.brandTitle}>CO-COACHIFY</Text>
-          <Text style={styles.tagline}>Train harder. Track everything. Coach anywhere.</Text>
-        </View>
+      <View style={[styles.brandHeader, { paddingTop: insets.top + spacing.xxl }]}>
+        <Image source={logo} style={styles.logo} contentFit="contain" />
+        <Text style={styles.brandTitle}>CO-COACHIFY</Text>
+        <Text style={styles.tagline}>Your Coaching Assistant</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -188,18 +181,18 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  heroWrap: { height: 280 },
-  hero: { ...StyleSheet.absoluteFillObject },
-  heroContent: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: "flex-end", paddingBottom: spacing.lg },
+  brandHeader: { alignItems: "center", paddingBottom: spacing.lg },
+  logo: { width: 110, height: 110, borderRadius: 26 },
   brandTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 40,
+    fontSize: 34,
     color: colors.onSurface,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
+    marginTop: spacing.md,
   },
   tagline: {
     fontFamily: fonts.medium,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.onSurfaceSecondary,
     marginTop: spacing.xs,
   },

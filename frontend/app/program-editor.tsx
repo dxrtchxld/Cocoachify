@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
+import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
 import { categoryMeta, colors, fonts, radius, sessionTypeIcon, spacing } from "@/src/theme";
 
@@ -34,7 +35,8 @@ export default function ProgramEditor() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
-  const [category, setCategory] = useState("fitness");
+  const { user } = useAuth();
+  const [category, setCategory] = useState(user?.coach_specialty ?? "fitness");
   const [difficulty, setDifficulty] = useState("beginner");
   const [totalDays, setTotalDays] = useState(28);
   const [daysPerWeek, setDaysPerWeek] = useState(3);

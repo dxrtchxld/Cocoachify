@@ -148,6 +148,58 @@ async def recent_activity(user: dict = Depends(get_current_user)):
     return logs
 
 
+@router.get("/inbox")
+async def inbox(user: dict = Depends(get_current_user)):
+    require_coach(user)
+    clients = await db.users.find(
+        {"coach_id": user["user_id"]}, {"_id": 0, "user_id": 1, "name": 1}
+    ).to_list(200)
+    name_map = {c["user_id"]: c.get("name") for c in clients}
+    if not name_map:
+        return []
+    logs = (
+        await db.client_logs.find(
+            {"user_id": {"$in": list(name_map.keys())}, "log_type": "workout"}, {"_id": 0}
+        )
+        .sort("date", -1)
+        .to_list(100)
+    )
+    urgent_words = ("pain", "injur", "hurt", "dizzy", "sick", "sharp")
+    out = []
+    for l in logs:
+        notes = (l.get("notes") or "").lower()
+        rpe = l.get("rpe") or 0
+        if rpe >= 9 or any(w in notes for w in urgent_words):
+            urgency = "urgent"
+        elif rpe >= 8:
+            urgency = "watch"
+        else:
+            urgency = "normal"
+        out.append({
+            **l,
+            "date": _aware(l["date"]).isoformat(),
+            "client_name": name_map.get(l["user_id"]),
+            "urgency": urgency,
+            "reviewed": l.get("reviewed", False),
+        })
+    return out
+
+
+@router.post("/inbox/{log_id}/review")
+async def review_checkin(log_id: str, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    log = await db.client_logs.find_one({"id": log_id}, {"_id": 0})
+    if not log:
+        raise HTTPException(status_code=404, detail="Check-in not found")
+    client = await db.users.find_one(
+        {"user_id": log["user_id"], "coach_id": user["user_id"]}, {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=403, detail="Not your client")
+    await db.client_logs.update_one({"id": log_id}, {"$set": {"reviewed": True}})
+    return {"ok": True}
+
+
 @router.get("/stats")
 async def coach_stats(user: dict = Depends(get_current_user)):
     require_coach(user)

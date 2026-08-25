@@ -1,21 +1,21 @@
 export const colors = {
-  surface: "#121214",
+  surface: "#0A0F0B",
   onSurface: "#FFFFFF",
-  surfaceSecondary: "#1C1C1E",
-  onSurfaceSecondary: "#A1A1A8",
-  surfaceTertiary: "#2C2C2E",
-  onSurfaceTertiary: "#EBEBF5",
-  brand: "#FF4B3A",
-  onBrand: "#FFFFFF",
-  brandSecondary: "#FF7B6E",
-  brandTertiary: "#4A1A15",
-  onBrandTertiary: "#FFBDB8",
+  surfaceSecondary: "#131A15",
+  onSurfaceSecondary: "#93A398",
+  surfaceTertiary: "#1E2921",
+  onSurfaceTertiary: "#DCEBE0",
+  brand: "#34E27A",
+  onBrand: "#06130B",
+  brandSecondary: "#7CF5AC",
+  brandTertiary: "#0E2A1A",
+  onBrandTertiary: "#A8F5C8",
   success: "#32D74B",
   warning: "#FFD60A",
   error: "#FF453A",
-  border: "#2C2C2E",
-  borderStrong: "#48484A",
-  divider: "#1C1C1E",
+  border: "#1E2921",
+  borderStrong: "#33453A",
+  divider: "#131A15",
 };
 
 export const spacing = {
@@ -45,14 +45,7 @@ export const fonts = {
   bold: "Manrope-Bold",
 };
 
-export const images = {
-  dashboardHero:
-    "https://images.pexels.com/photos/3253515/pexels-photo-3253515.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-  premiumHero:
-    "https://images.unsplash.com/photo-1705468616275-616b7c01d317?crop=entropy&cs=srgb&fm=jpg&q=85&w=940",
-  workoutCardBg:
-    "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?crop=entropy&cs=srgb&fm=jpg&q=85&w=940",
-};
+export const logo = require("../assets/images/cc-logo.png");
 
 export const sessionTypeIcon: Record<string, string> = {
   workout: "barbell",

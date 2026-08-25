@@ -146,6 +146,13 @@ export default function ClientScreen() {
             <Text style={styles.name}>{client.name}</Text>
             <Text style={styles.email}>{client.email}</Text>
           </View>
+          <TouchableOpacity
+            testID="message-client-btn"
+            style={styles.msgBtn}
+            onPress={() => router.push({ pathname: "/chat/[id]", params: { id: client.user_id } })}
+          >
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.brand} />
+          </TouchableOpacity>
         </View>
 
         {/* Current program */}
@@ -327,6 +334,16 @@ const styles = StyleSheet.create({
   avatarText: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onBrandTertiary },
   name: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface },
   email: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 1 },
+  msgBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sectionTitle: {
     fontFamily: fonts.display,
     fontSize: 13,

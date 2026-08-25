@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -18,7 +16,7 @@ import Button from "@/src/components/Button";
 import ProgressRing from "@/src/components/ProgressRing";
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
-import { colors, fonts, images, radius, spacing } from "@/src/theme";
+import { colors, fonts, radius, spacing } from "@/src/theme";
 
 type DashboardData = {
   user: { name: string };
@@ -37,10 +35,18 @@ type DashboardData = {
   program: { id: string; name: string; total_days: number; current_day: number; cover_image: string | null } | null;
 };
 
+type Habits = {
+  water_count: number;
+  water_goal: number;
+  affirmation_done: boolean;
+  affirmation_text: string;
+};
+
 export default function ClientToday() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [habits, setHabits] = useState<Habits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,7 +54,12 @@ export default function ClientToday() {
   const load = useCallback(async () => {
     try {
       setError(false);
-      setData(await api<DashboardData>("/dashboard"));
+      const [d, h] = await Promise.all([
+        api<DashboardData>("/dashboard"),
+        api<Habits>("/habits/today"),
+      ]);
+      setData(d);
+      setHabits(h);
     } catch {
       setError(true);
     } finally {
@@ -56,6 +67,17 @@ export default function ClientToday() {
       setRefreshing(false);
     }
   }, []);
+
+  const updateHabits = async (patch: { water_count?: number; affirmation_done?: boolean }) => {
+    if (!habits) return;
+    setHabits({ ...habits, ...patch });
+    try {
+      const h = await api<Habits>("/habits/today", { method: "PUT", body: patch });
+      setHabits(h);
+    } catch {
+      // will refresh on focus
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -163,15 +185,6 @@ export default function ClientToday() {
         <Text style={styles.sectionTitle}>TODAY&apos;S WORKOUT</Text>
         {data.today_session && data.program ? (
           <View style={styles.planCard}>
-            <Image
-              source={{ uri: data.program.cover_image || images.workoutCardBg }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-            />
-            <LinearGradient
-              colors={["rgba(18,18,20,0.3)", "rgba(18,18,20,0.94)"]}
-              style={StyleSheet.absoluteFill}
-            />
             <View style={styles.planContent}>
               <View style={styles.dayChip}>
                 <Text style={styles.dayChipText}>
@@ -229,6 +242,60 @@ export default function ClientToday() {
           </View>
         ) : null}
 
+        {/* Daily habits */}
+        {habits && (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>DAILY HABITS</Text>
+            <View style={styles.habitsRow}>
+              <View style={styles.habitCard}>
+                <View style={styles.habitHeader}>
+                  <Ionicons name="water" size={18} color={colors.brand} />
+                  <Text style={styles.habitTitle}>Water</Text>
+                </View>
+                <Text style={styles.habitValue}>
+                  {habits.water_count}
+                  <Text style={styles.habitGoal}> / {habits.water_goal}</Text>
+                </Text>
+                <View style={styles.waterBtns}>
+                  <TouchableOpacity
+                    testID="water-minus"
+                    style={styles.waterBtn}
+                    onPress={() => updateHabits({ water_count: Math.max(0, habits.water_count - 1) })}
+                  >
+                    <Ionicons name="remove" size={18} color={colors.onSurface} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID="water-plus"
+                    style={[styles.waterBtn, { backgroundColor: colors.brand }]}
+                    onPress={() => updateHabits({ water_count: habits.water_count + 1 })}
+                  >
+                    <Ionicons name="add" size={18} color={colors.onBrand} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <TouchableOpacity
+                testID="affirmation-card"
+                style={[styles.habitCard, habits.affirmation_done && { borderColor: colors.brand }]}
+                activeOpacity={0.8}
+                onPress={() => updateHabits({ affirmation_done: !habits.affirmation_done })}
+              >
+                <View style={styles.habitHeader}>
+                  <Ionicons
+                    name={habits.affirmation_done ? "checkmark-circle" : "sparkles"}
+                    size={18}
+                    color={colors.brand}
+                  />
+                  <Text style={styles.habitTitle}>Daily Affirmation</Text>
+                </View>
+                <Text style={styles.affirmationText}>&ldquo;{habits.affirmation_text}&rdquo;</Text>
+                <Text style={styles.affirmationHint}>
+                  {habits.affirmation_done ? "Done today ✓" : "Tap when you've said it"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
         {/* Quick action */}
         <View style={styles.quickRow}>
           <TouchableOpacity
@@ -253,6 +320,19 @@ export default function ClientToday() {
           )}
         </View>
       </ScrollView>
+
+      {/* Ask Coach FAB */}
+      {hasCoach && (
+        <TouchableOpacity
+          testID="ask-coach-fab"
+          style={[styles.fab, { bottom: insets.bottom + spacing.lg, backgroundColor: colors.brand }]}
+          activeOpacity={0.85}
+          onPress={() => router.push({ pathname: "/chat/[id]", params: { id: user!.coach_id! } })}
+        >
+          <Ionicons name="chatbubble-ellipses" size={22} color={colors.onBrand} />
+          <Text style={[styles.fabText, { color: colors.onBrand }]}>Ask Coach</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -328,10 +408,12 @@ const styles = StyleSheet.create({
   planCard: {
     marginHorizontal: spacing.xl,
     borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     overflow: "hidden",
-    minHeight: 200,
   },
-  planContent: { padding: spacing.xl, marginTop: 40 },
+  planContent: { padding: spacing.xl },
   dayChip: {
     alignSelf: "flex-start",
     backgroundColor: colors.brand,
@@ -406,4 +488,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   quickText: { fontFamily: fonts.semiBold, fontSize: 12, color: colors.onSurface },
+  habitsRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl },
+  habitCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+  },
+  habitHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  habitTitle: { fontFamily: fonts.bold, fontSize: 13, color: colors.onSurface },
+  habitValue: { fontFamily: fonts.displayBold, fontSize: 30, color: colors.onSurface, marginTop: spacing.sm },
+  habitGoal: { fontSize: 16, color: colors.onSurfaceSecondary },
+  waterBtns: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  waterBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  affirmationText: {
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontStyle: "italic",
+    color: colors.onSurfaceTertiary,
+    marginTop: spacing.sm,
+  },
+  affirmationHint: { fontFamily: fonts.semiBold, fontSize: 11, color: colors.onSurfaceSecondary, marginTop: spacing.sm },
+  fab: {
+    position: "absolute",
+    right: spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  fabText: { fontFamily: fonts.bold, fontSize: 14 },
 });

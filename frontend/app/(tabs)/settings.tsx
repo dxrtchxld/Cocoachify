@@ -16,12 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
 import { useAuth, User } from "@/src/context/AuthContext";
+import { ACCENTS, useTheme } from "@/src/context/ThemeContext";
 import { api } from "@/src/lib/api";
 import { colors, fonts, radius, spacing } from "@/src/theme";
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const { user, logout, refreshUser } = useAuth();
+  const { accentColor, setAccent } = useTheme();
   const isCoach = user?.role === "coach";
   const [coach, setCoach] = useState<User | null>(null);
   const [connectMode, setConnectMode] = useState<"code" | "email">("code");
@@ -123,6 +125,45 @@ export default function Settings() {
         {isCoach ? (
           <>
             <Text style={styles.sectionTitle}>COACHING</Text>
+            <View style={styles.swatchCard}>
+              <Text style={styles.rowTitle}>What kind of coach are you?</Text>
+              <Text style={styles.rowSub}>This shapes your dashboard language and defaults.</Text>
+              <View style={styles.specRow}>
+                {[
+                  { id: "fitness", label: "💪 Fitness" },
+                  { id: "yoga", label: "🧘 Yoga" },
+                  { id: "breathwork", label: "🌬️ Breathwork" },
+                  { id: "mobility", label: "🤸 Mobility" },
+                  { id: "mindfulness", label: "🌿 Mindfulness" },
+                ].map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    testID={`spec-${s.id}`}
+                    style={[
+                      styles.specChip,
+                      user?.coach_specialty === s.id && { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
+                    ]}
+                    onPress={async () => {
+                      try {
+                        await api("/me/role", { method: "POST", body: { role: "coach", specialty: s.id } });
+                        await refreshUser();
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.specText,
+                        user?.coach_specialty === s.id && { color: colors.onSurface },
+                      ]}
+                    >
+                      {s.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <TouchableOpacity
               testID="invite-client-row"
               style={styles.row}
@@ -241,6 +282,30 @@ export default function Settings() {
             )}
           </>
         )}
+
+        {/* Appearance */}
+        <Text style={styles.sectionTitle}>APPEARANCE</Text>
+        <View style={styles.swatchCard}>
+          <Text style={styles.rowSub}>Accent color — applies across the whole app</Text>
+          <View style={styles.swatchRow}>
+            {ACCENTS.map((a) => (
+              <TouchableOpacity
+                key={a.name}
+                testID={`accent-${a.name.replace(" ", "-")}`}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: a.brand },
+                  accentColor === a.brand && styles.swatchActive,
+                ]}
+                onPress={() => setAccent(a)}
+              >
+                {accentColor === a.brand && (
+                  <Ionicons name="checkmark" size={18} color={a.onBrand} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
         {/* Premium */}
         {!user?.is_premium && (
@@ -395,4 +460,32 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   joinMsg: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.brandSecondary, marginTop: spacing.md, textAlign: "center" },
+  swatchCard: {
+    marginHorizontal: spacing.xl,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+  },
+  swatchRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.md },
+  swatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swatchActive: { borderWidth: 3, borderColor: "#FFFFFF" },
+  specRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
+  specChip: {
+    paddingHorizontal: spacing.md,
+    minHeight: 40,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  specText: { fontFamily: fonts.semiBold, fontSize: 12.5, color: colors.onSurfaceSecondary },
 });

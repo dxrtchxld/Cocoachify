@@ -320,3 +320,99 @@ frontend:
 agent_communication:
   - agent: "main"
     message: "Credentials in /app/memory/test_credentials.md. coach.demo@cocoachify.com/Coach1234! (coach w/ 1 program+1 session), client.demo@cocoachify.com/Client1234! (client, connected+assigned, day 2). testcoach@cocoachify.com/Test1234! lands on role-select (no role yet). Do NOT complete Stripe payments. Google OAuth not e2e-testable. Note: progress tab exists for clients only; builder.tsx deleted."
+
+## PHASE 2 (Chat, Coach Inbox, Daily Habits, Dynamic Vocab, AI Program Import, Branding) — added by main agent, NEEDS FULL TESTING
+backend:
+  - task: "Chat: GET/POST /api/chat/messages/{other_id}, conversations list, unread counts"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes_chat.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Coach Inbox: check-in review with New/Urgent/Watch filters"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes_coach.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Daily Habits: water counter + daily affirmation (GET/PUT /api/misc/habits)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes_misc.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "AI Program Import: image upload + Google Drive URL parsing via Emergent LLM vision (/api/programs/import)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes_import.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Coach specialty setting (dynamic vocab support)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes_misc.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+frontend:
+  - task: "Coach Inbox tab with All/New/Urgent/Watch filters"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/inbox.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Chat screen (client<->coach messaging), Ask Coach entry from workout screen"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/chat/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Daily Habits on client Today screen (water counter + affirmation toggle)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/screens/ClientToday.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Dynamic vocab: coach specialty changes UI terminology (word 'Practitioner' is BANNED)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/lib/vocab.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "AI Program Import screen (image pick / Drive URL -> parsed program preview -> save)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/program-import.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+  - task: "Branding: cc-logo on login/paywall, no stock person photos, tagline 'Your Coaching Assistant'"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/login.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+test_plan:
+  current_focus:
+    - "Chat backend + frontend"
+    - "Coach Inbox filters"
+    - "Daily Habits"
+    - "AI Program Import"
+    - "Dynamic vocab"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "PHASE 2 features (chat, inbox, habits, vocab, AI import) were code-complete but never run through testing agent. Phase 1 already passed 34/34 backend tests — only retest Phase 1 flows if regressions suspected (auth/routing). For AI import, a real image parse may be tested with a simple generated workout-plan image; Emergent LLM key is configured in backend/.env. Do NOT complete Stripe payments."

@@ -63,6 +63,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Inbox",
+          href: isCoach ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="mail" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="programs"
         options={{
           title: "Programs",
