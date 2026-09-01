@@ -32,17 +32,17 @@ def _aware(dt):
 
 # ---------------- Certificates ----------------
 
-async def issue_certificate_if_complete(user_id: str, course_id: str) -> dict | None:
-    """Called after a lesson completion. Idempotent."""
+async def issue_certificate_if_complete(user_id: str, course_id: str) -> tuple[dict | None, bool]:
+    """Called after a lesson completion. Idempotent. Returns (certificate, is_newly_issued)."""
     total = await db.lessons.count_documents({"course_id": course_id})
     if not total:
-        return None
+        return None, False
     enr = await db.course_enrollments.find_one({"course_id": course_id, "user_id": user_id}, {"_id": 0})
     if not enr or len(enr.get("completed_lesson_ids") or []) < total:
-        return None
+        return None, False
     existing = await db.certificates.find_one({"course_id": course_id, "user_id": user_id}, {"_id": 0})
     if existing:
-        return existing
+        return existing, False
     course = await db.courses.find_one({"id": course_id}, {"_id": 0}) or {}
     coach = await db.users.find_one({"user_id": course.get("coach_id")}, {"_id": 0}) or {}
     client = await db.users.find_one({"user_id": user_id}, {"_id": 0}) or {}
@@ -61,7 +61,7 @@ async def issue_certificate_if_complete(user_id: str, course_id: str) -> dict | 
     }
     await db.certificates.insert_one(dict(cert))
     cert.pop("_id", None)
-    return cert
+    return cert, True
 
 
 @router.get("/certificates")

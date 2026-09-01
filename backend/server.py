@@ -61,6 +61,14 @@ async def lifespan(app: FastAPI):
     await db.practice_installs.create_index([("coach_id", 1), ("domain", 1)], unique=True)
     await db.certificates.create_index([("course_id", 1), ("user_id", 1)], unique=True)
     await db.challenges.create_index([("coach_id", 1), ("starts_at", -1)])
+    await db.password_reset_tokens.create_index("token_hash", unique=True)
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.automation_rules.create_index([("coach_id", 1), ("enabled", 1)])
+    await db.strava_oauth_states.create_index("expires_at", expireAfterSeconds=0)
+    await db.wearable_connections.create_index([("user_id", 1), ("provider", 1)], unique=True)
+    await db.wearable_activities.create_index(
+        [("user_id", 1), ("provider", 1), ("external_id", 1)], unique=True
+    )
     try:
         from storage import init_storage
         init_storage()
@@ -87,6 +95,7 @@ async def root():
 import routes_analytics
 import routes_assistant
 import routes_auth
+import routes_automations
 import routes_catalog
 import routes_chat
 import routes_coach
@@ -106,6 +115,7 @@ import routes_payments
 import routes_plans
 import routes_programs
 import routes_uploads
+import routes_wearables
 
 api_router.include_router(routes_auth.router)
 api_router.include_router(routes_programs.router)
@@ -130,6 +140,9 @@ api_router.include_router(routes_catalog.router)
 api_router.include_router(routes_growth.router)
 api_router.include_router(routes_growth.public_router)
 api_router.include_router(routes_booking.router)
+api_router.include_router(routes_automations.router)
+api_router.include_router(routes_wearables.router)
+api_router.include_router(routes_wearables.public_router)
 
 app.include_router(api_router)
 

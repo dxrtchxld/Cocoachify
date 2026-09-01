@@ -138,7 +138,12 @@ async def set_status(sub_id: str, body: StatusBody, user: dict = Depends(get_cur
     sub = await owned(db.subscriptions, sub_id, coach_id, "Subscription")
     plan = await db.membership_plans.find_one({"id": sub["plan_id"]}, {"_id": 0}) or {}
     course_ids = plan.get("course_ids") or []
+    prior_status = sub.get("status")
     await db.subscriptions.update_one({"id": sub_id}, {"$set": {"status": body.status}})
+    if body.status == "cancelled" and prior_status != "cancelled":
+        from automations import run_automations
+
+        await run_automations(coach_id, "membership_cancelled", sub["user_id"], {"plan_id": sub["plan_id"]})
     if course_ids:
         access = "active" if body.status == "active" else "paused"
         await db.course_enrollments.update_many(

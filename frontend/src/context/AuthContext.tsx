@@ -22,7 +22,10 @@ export type User = {
   role: "coach" | "client" | null;
   coach_specialty: string | null;
   theme_color: string | null;
+  font_pack: string | null;
   brand_logo: string | null;
+  brand_banner: string | null;
+  brand_tagline: string | null;
   is_coach: boolean;
   is_premium: boolean;
   coach_id: string | null;
@@ -45,6 +48,7 @@ type AuthContextType = {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUser: (patch: Partial<User>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -182,9 +186,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Merge a partial user update in place — used after PUTs that return the
+  // updated profile (theme/brand) so the UI reflects it immediately without
+  // a stale round trip that could race with local optimistic state.
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, loginWithGoogle, login, register, logout, refreshUser }}
+      value={{ user, loading, loginWithGoogle, login, register, logout, refreshUser, updateUser }}
     >
       {children}
     </AuthContext.Provider>

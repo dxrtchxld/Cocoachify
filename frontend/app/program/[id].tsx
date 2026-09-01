@@ -173,9 +173,10 @@ export default function ProgramScreen() {
             )}
           </View>
           <View style={styles.heroBottom}>
-            <View style={[styles.catBadge, { backgroundColor: meta.bg }]}>
+            <View style={[styles.catBadge, { backgroundColor: meta.bg, flexDirection: "row", alignItems: "center", gap: 4 }]}>
+              <Ionicons name={meta.icon as any} size={11} color={meta.color} />
               <Text style={[styles.catBadgeText, { color: meta.color }]}>
-                {meta.emoji} {program.category.toUpperCase()}
+                {program.category.toUpperCase()}
               </Text>
             </View>
             <Text style={styles.title}>{program.name}</Text>

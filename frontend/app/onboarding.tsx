@@ -19,26 +19,26 @@ import { api } from "@/src/lib/api";
 import { colors, fonts, radius, spacing } from "@/src/theme";
 
 const GOALS = [
-  { id: "lose_weight", emoji: "🔥", title: "Lose Weight", sub: "Burn fat, feel lighter, build sustainable habits" },
-  { id: "build_strength", emoji: "💪", title: "Build Strength", sub: "Get stronger, increase muscle, improve performance" },
-  { id: "cardio", emoji: "🏃", title: "Cardio / Endurance", sub: "Running, cycling, rowing — build your aerobic engine" },
-  { id: "flexibility", emoji: "🧘", title: "Flexibility / Mobility", sub: "Move better, reduce pain, improve range of motion" },
-  { id: "wellness", emoji: "⚖️", title: "General Wellness", sub: "Balance, energy, stress, and feeling good overall" },
+  { id: "lose_weight", icon: "flame", title: "Lose Weight", sub: "Burn fat, feel lighter, build sustainable habits" },
+  { id: "build_strength", icon: "barbell", title: "Build Strength", sub: "Get stronger, increase muscle, improve performance" },
+  { id: "cardio", icon: "walk", title: "Cardio / Endurance", sub: "Running, cycling, rowing — build your aerobic engine" },
+  { id: "flexibility", icon: "body", title: "Flexibility / Mobility", sub: "Move better, reduce pain, improve range of motion" },
+  { id: "wellness", icon: "pulse", title: "General Wellness", sub: "Balance, energy, stress, and feeling good overall" },
 ];
 
 const LEVELS = [
-  { id: "just_starting", emoji: "🌱", title: "Just Starting", sub: "New to structured training or returning after a break" },
-  { id: "some_experience", emoji: "🔁", title: "Some Experience", sub: "Consistent for 6+ months, familiar with the basics" },
-  { id: "experienced", emoji: "⚡", title: "Experienced", sub: "Training hard for years, ready for serious programming" },
+  { id: "just_starting", icon: "leaf", title: "Just Starting", sub: "New to structured training or returning after a break" },
+  { id: "some_experience", icon: "refresh", title: "Some Experience", sub: "Consistent for 6+ months, familiar with the basics" },
+  { id: "experienced", icon: "flash", title: "Experienced", sub: "Training hard for years, ready for serious programming" },
 ];
 
 const FOCUS = [
-  { id: "upper_body", emoji: "💪", label: "Upper Body" },
-  { id: "lower_body", emoji: "🦵", label: "Lower Body" },
-  { id: "core_back", emoji: "🎯", label: "Core & Back" },
-  { id: "full_body", emoji: "⚡", label: "Full Body" },
-  { id: "cardio_focus", emoji: "🏃", label: "Cardio Focus" },
-  { id: "mind_body", emoji: "🧘", label: "Mind & Body" },
+  { id: "upper_body", icon: "barbell", label: "Upper Body" },
+  { id: "lower_body", icon: "walk", label: "Lower Body" },
+  { id: "core_back", icon: "fitness", label: "Core & Back" },
+  { id: "full_body", icon: "flash", label: "Full Body" },
+  { id: "cardio_focus", icon: "heart", label: "Cardio Focus" },
+  { id: "mind_body", icon: "body", label: "Mind & Body" },
 ];
 
 export default function Onboarding() {
@@ -89,7 +89,7 @@ export default function Onboarding() {
         <ScrollView contentContainerStyle={{ paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
           {step === 0 && (
             <View style={styles.stepBody}>
-              <Text style={styles.emoji}>👋</Text>
+              <Ionicons name="hand-left" size={40} color={colors.brand} style={styles.emoji} />
               <Text style={styles.title}>Welcome, {user?.name?.split(" ")[0] || "there"}.</Text>
               <Text style={styles.italic}>Built for your journey.</Text>
               <Text style={styles.body}>
@@ -97,9 +97,9 @@ export default function Onboarding() {
                 your first day feels built for you, not copied from a template.
               </Text>
               <View style={styles.bullets}>
-                <Text style={styles.bullet}>🎯  Personalized to your goal</Text>
-                <Text style={styles.bullet}>⚡  Tailored intensity</Text>
-                <Text style={styles.bullet}>🧠  Coach gets your full context on Day 1</Text>
+                <Text style={styles.bullet}>•  Personalized to your goal</Text>
+                <Text style={styles.bullet}>•  Tailored intensity</Text>
+                <Text style={styles.bullet}>•  Coach gets your full context on Day 1</Text>
               </View>
             </View>
           )}
@@ -116,7 +116,7 @@ export default function Onboarding() {
                   activeOpacity={0.85}
                   onPress={() => setGoal(g.id)}
                 >
-                  <Text style={styles.optionEmoji}>{g.emoji}</Text>
+                  <Ionicons name={g.icon as any} size={22} color={colors.brand} style={styles.optionEmoji} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.optionTitle}>{g.title}</Text>
                     <Text style={styles.optionSub}>{g.sub}</Text>
@@ -138,7 +138,7 @@ export default function Onboarding() {
                   activeOpacity={0.85}
                   onPress={() => setExperience(l.id)}
                 >
-                  <Text style={styles.optionEmoji}>{l.emoji}</Text>
+                  <Ionicons name={l.icon as any} size={22} color={colors.brand} style={styles.optionEmoji} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.optionTitle}>{l.title}</Text>
                     <Text style={styles.optionSub}>{l.sub}</Text>
@@ -182,8 +182,14 @@ export default function Onboarding() {
                     style={[styles.chip, focus === f.id && styles.chipActive]}
                     onPress={() => setFocus(focus === f.id ? null : f.id)}
                   >
+                    <Ionicons
+                      name={f.icon as any}
+                      size={14}
+                      color={focus === f.id ? colors.onSurface : colors.onSurfaceSecondary}
+                      style={{ marginRight: 6 }}
+                    />
                     <Text style={[styles.chipText, focus === f.id && styles.chipTextActive]}>
-                      {f.emoji} {f.label}
+                      {f.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -282,6 +288,8 @@ const styles = StyleSheet.create({
   hint: { fontFamily: fonts.medium, fontSize: 12, color: colors.onSurfaceSecondary, textAlign: "center", marginTop: spacing.sm },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
     minHeight: 44,
     justifyContent: "center",

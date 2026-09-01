@@ -28,6 +28,8 @@ export default function RootLayout() {
     "Manrope-Medium": require("../assets/fonts/Manrope-Medium.ttf"),
     "Manrope-SemiBold": require("../assets/fonts/Manrope-SemiBold.ttf"),
     "Manrope-Bold": require("../assets/fonts/Manrope-Bold.ttf"),
+    "Anton-Regular": require("../assets/fonts/Anton-Regular.ttf"),
+    "SpaceMono-Regular": require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   const ready = (iconsLoaded || !!iconsError) && (fontsLoaded || !!fontsError);
@@ -54,9 +56,9 @@ export default function RootLayout() {
 }
 
 function ThemedApp() {
-  const { version } = useTheme();
+  useTheme();
   return (
-    <View key={version} style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{

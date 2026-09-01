@@ -1,0 +1,37 @@
+{
+  "summary": "Focused retest (frontend-only) of the CRITICAL accent/font-pack revert bug from iteration_10.json, on Co-Coachify Brand Studio, coach jcgfit@gmail.com (is_premium=true), Expo web preview mobile viewport 375x667. VERDICT: BUG IS FIXED. Tapped 'Onyx Gold' accent and 'Editorial Mono' font pack -> checkmark moved instantly to each and STAYED (no snap-back after 1-2.5s wait), preview chip color updated and stayed updated, confirmed via GET /api/auth/me (server) matching the UI (theme_color=#D4AF37, font_pack=editorial_mono) and via a full page reload showing the same selection. Also ran a rapid multi-tap regression (Crimson -> Ocean -> Lime -> Onyx Gold in quick succession, 150ms apart) and it cleanly landed on the final tapped swatch with no flicker/revert. The ThemeContext.tsx fix (ref-guarded sync effect keyed only on user?.theme_color/font_pack + AuthContext.updateUser() merging PUT responses in-place) works correctly. One methodology note: each mcp_browser_automation call opens a brand-new browser context with no shared storage, so login + Brand Studio navigation + taps had to be done within a single script execution to preserve the session; an early test attempt that split login and navigation across two separate tool calls incorrectly showed 'unauthenticated defaults' (Champagne/locked colors) purely because the session was lost between calls, not an app bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "app/_layout.tsx (ThemedApp, `<View key={version}>` wrapping the entire Stack)",
+        "issue": "STILL PRESENT (carried over from iteration_10, not the bug this round targeted but observed while retesting): every accent/font tap increments ThemeContext's `version`, remounting the whole View+Stack via the key prop. Confirmed again on this round: tapping any swatch/font row causes the Brand Studio ScrollView to snap back to the top instantly (verified via before/after screenshots on every single tap in this session). Does not cause data loss or revert of the selection itself (that part is fixed), but is a jarring UX side-effect and unnecessarily costly re-render mechanism.",
+        "testID": "accent-<ColorName> / font-pack-<key>",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "CRITICAL bug from iteration_10 CONFIRMED FIXED - no further action needed on the revert issue.",
+    "Carry-over HIGH item (not in this round's scope but still reproducible): reconsider `key={version}` full-Stack remount in app/_layout.tsx to stop the ScrollView-reset-to-top side effect on every theme change. Recommend driving color/font re-render via a lighter mechanism (context version consumed by style-dependent leaf components only) instead of remounting the entire navigation stack."
+  ],
+  "critical_code_review_comments": [
+    "ThemeContext.tsx: the new sync effect (deps: [user?.theme_color, user?.font_pack], guarded by appliedFromServer ref) correctly no longer reacts to its own optimistic setAccentColor/setFontPackState calls. This is the correct fix pattern -- verified working end-to-end.",
+    "AuthContext.updateUser(): correctly merges the PUT /me/theme response into the user object in place, avoiding a stale-refetch race. Verified the merged user.theme_color/font_pack match what setAccent/setFontPack applied optimistically, and match the server via direct GET /api/auth/me.",
+    "The `key={version}` remount pattern in app/_layout.tsx is orthogonal to the fixed bug but remains a design smell worth revisiting (see HIGH item above)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not in scope this round)", "frontend": "100% for the targeted retest (accent + font persistence, no revert, rapid-tap regression) — pre-existing HIGH scroll-reset issue remains and is unrelated to the retest scope"},
+  "seed_data_creation": "None. Reused jcgfit@gmail.com real premium account; left its theme_color as #D4AF37 (Onyx Gold) / font_pack as editorial_mono at the end of this test session (was previously #34E27A / bold_impact before this run) -- purely cosmetic account state, no data risk.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The critical accent/font revert bug is fixed and verified end-to-end (instant apply, stays applied, survives reload, survives rapid multi-tap). The only remaining related issue is the pre-existing HIGH-priority ScrollView-reset-to-top on every theme tap caused by `key={version}` remounting the whole Stack in app/_layout.tsx -- this was flagged in iteration_10 and is still present; not fixed in this round since it wasn't the ask, but main agent should address it in a future pass. Also note for future testing agents: mcp_browser_automation tool calls do NOT share browser storage/session across separate invocations -- always perform login + the full flow being tested inside ONE script call when auth state must persist.",
+  "rca_of_issue": "N/A this round -- bug already fixed by main agent prior to this retest. Original RCA is documented in iteration_10.json."
+}

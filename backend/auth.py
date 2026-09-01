@@ -1,4 +1,6 @@
+import hashlib
 import os
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +13,7 @@ from db import db
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
 TOKEN_DAYS = 7
+RESET_TOKEN_TTL = timedelta(minutes=30)
 
 
 def new_user_id() -> str:
@@ -26,6 +29,16 @@ def verify_password(password: str, password_hash: str) -> bool:
         return bcrypt.checkpw(password.encode(), password_hash.encode())
     except (ValueError, TypeError):
         return False
+
+
+def new_reset_token() -> tuple[str, str]:
+    """(raw token to email, sha256 digest to store) — never store the raw value."""
+    raw = secrets.token_urlsafe(40)
+    return raw, hashlib.sha256(raw.encode()).hexdigest()
+
+
+def reset_token_digest(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def create_jwt(user_id: str, email: str) -> str:
@@ -49,7 +62,10 @@ def user_public(user: dict) -> dict:
         "role": user.get("role"),
         "coach_specialty": user.get("coach_specialty"),
         "theme_color": user.get("theme_color"),
+        "font_pack": user.get("font_pack"),
         "brand_logo": user.get("brand_logo"),
+        "brand_banner": user.get("brand_banner"),
+        "brand_tagline": user.get("brand_tagline"),
         "is_coach": user.get("role") == "coach",
         "is_premium": user.get("is_premium", False),
         "coach_id": user.get("coach_id"),
@@ -73,6 +89,14 @@ async def get_current_user(request: Request) -> dict:
         if payload.get("type") == "custom" and payload.get("sub"):
             user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
             if user:
+                if user.get("deleted_at"):
+                    raise HTTPException(status_code=401, detail="This account has been deleted")
+                changed_at = user.get("password_changed_at")
+                if changed_at is not None:
+                    if changed_at.tzinfo is None:
+                        changed_at = changed_at.replace(tzinfo=timezone.utc)
+                    if payload.get("iat", 0) < changed_at.timestamp():
+                        raise HTTPException(status_code=401, detail="Session expired — please sign in again")
                 return user
     except jwt.InvalidTokenError:
         pass

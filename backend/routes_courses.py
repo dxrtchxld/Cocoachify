@@ -454,7 +454,20 @@ async def complete_lesson(lesson_id: str, user: dict = Depends(get_current_user)
 
     from routes_growth import issue_certificate_if_complete
 
-    certificate = await issue_certificate_if_complete(user["user_id"], lesson["course_id"])
+    certificate, is_new_cert = await issue_certificate_if_complete(user["user_id"], lesson["course_id"])
+
+    from automations import run_automations
+
+    await run_automations(
+        course["coach_id"], "lesson_completed", user["user_id"],
+        {"course_id": lesson["course_id"], "course_title": course.get("title")},
+    )
+    if is_new_cert:
+        await run_automations(
+            course["coach_id"], "course_completed", user["user_id"],
+            {"course_id": lesson["course_id"], "course_title": course.get("title")},
+        )
+
     return {
         "ok": True,
         "completed_count": done,

@@ -406,6 +406,7 @@ export default function StudioBooking() {
                       {b.client_id ? (
                         <TouchableOpacity
                           testID={`prep-session-${b.id}`}
+                          style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                           onPress={() =>
                             router.push({
                               pathname: "/studio/assistant",
@@ -413,7 +414,8 @@ export default function StudioBooking() {
                             })
                           }
                         >
-                          <Text style={styles.action}>✨ Prep with AI</Text>
+                          <Ionicons name="sparkles" size={13} color={colors.brand} />
+                          <Text style={styles.action}>Prep with AI</Text>
                         </TouchableOpacity>
                       ) : null}
                     </View>

@@ -15,7 +15,7 @@ import requests
 BASE = os.environ.get("EXPO_BACKEND_URL", "https://gemini-mobile-app-12.preview.emergentagent.com").rstrip("/") + "/api"
 COACH_A = ("jcgfit@gmail.com", "Coach1234!")
 CLIENT_A = ("ilovejeremygillespie@gmail.com", "Client1234!")
-ALL_FLAGS = ["courses", "coaching", "community", "crm", "landing", "memberships", "assistant", "files"]
+ALL_FLAGS = ["courses", "coaching", "community", "crm", "landing", "memberships", "assistant", "files", "automations"]
 
 
 # ---------------- helpers ----------------

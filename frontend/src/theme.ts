@@ -62,12 +62,12 @@ export const sessionTypeIcon: Record<string, string> = {
   recovery: "heart",
 };
 
-export const categoryMeta: Record<string, { emoji: string; color: string; bg: string }> = {
-  fitness: { emoji: "💪", color: "#F0B27A", bg: "rgba(240,178,122,0.14)" },
-  breathwork: { emoji: "🌬️", color: "#8EC5FF", bg: "rgba(142,197,255,0.14)" },
-  yoga: { emoji: "🧘", color: "#C4B0FF", bg: "rgba(196,176,255,0.14)" },
-  mobility: { emoji: "🤸", color: "#F5D77E", bg: "rgba(245,215,126,0.14)" },
-  mindfulness: { emoji: "🌿", color: "#86EFAC", bg: "rgba(134,239,172,0.14)" },
+export const categoryMeta: Record<string, { icon: string; color: string; bg: string }> = {
+  fitness: { icon: "barbell", color: "#F0B27A", bg: "rgba(240,178,122,0.14)" },
+  breathwork: { icon: "cloud", color: "#8EC5FF", bg: "rgba(142,197,255,0.14)" },
+  yoga: { icon: "leaf", color: "#C4B0FF", bg: "rgba(196,176,255,0.14)" },
+  mobility: { icon: "body", color: "#F5D77E", bg: "rgba(245,215,126,0.14)" },
+  mindfulness: { icon: "sparkles", color: "#86EFAC", bg: "rgba(134,239,172,0.14)" },
 };
 
 // Cinematic cover images per category (Luxe Dark blueprint)

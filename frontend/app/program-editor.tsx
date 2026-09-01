@@ -250,7 +250,7 @@ export default function ProgramEditor() {
                     style={[styles.typeCard, active && styles.typeCardActive]}
                     onPress={() => setCategory(c)}
                   >
-                    <Text style={{ fontSize: 22 }}>{meta.emoji}</Text>
+                    <Ionicons name={meta.icon as any} size={22} color={active ? colors.brand : colors.onSurfaceSecondary} />
                     <Text style={[styles.typeText, active && { color: colors.onSurface }]}>
                       {c.charAt(0).toUpperCase() + c.slice(1)}
                     </Text>

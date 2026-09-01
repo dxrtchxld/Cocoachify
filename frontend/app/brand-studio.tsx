@@ -11,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,17 +19,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Scrim from "@/src/components/Scrim";
 import { useAuth } from "@/src/context/AuthContext";
-import { ACCENTS, useTheme } from "@/src/context/ThemeContext";
+import { ACCENTS, FONT_PACKS, useTheme } from "@/src/context/ThemeContext";
 import { api, mediaUrl, uploadImage } from "@/src/lib/api";
 import { colors, coverFor, fonts, radius, spacing } from "@/src/theme";
 
 export default function BrandStudio() {
   const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth();
-  const { accentColor, setAccent } = useTheme();
+  const { accentColor, fontPack, setAccent, setFontPack } = useTheme();
   const [uploading, setUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [tagline, setTagline] = useState(user?.brand_tagline ?? "");
+  const [savingTagline, setSavingTagline] = useState(false);
+  const isPremium = !!user?.is_premium;
 
   const logoUrl = mediaUrl(user?.brand_logo);
+  const bannerUrl = mediaUrl(user?.brand_banner);
 
   const pickLogo = async () => {
     const perm = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -77,6 +83,80 @@ export default function BrandStudio() {
     }
   };
 
+  const pickBanner = async () => {
+    const perm = await ImagePicker.getMediaLibraryPermissionsAsync();
+    let status = perm.status;
+    if (status !== "granted" && perm.canAskAgain) {
+      status = (await ImagePicker.requestMediaLibraryPermissionsAsync()).status;
+    }
+    if (status !== "granted") {
+      Alert.alert(
+        "Photo access needed",
+        "Allow photo access to upload a banner.",
+        Platform.OS === "web"
+          ? [{ text: "OK" }]
+          : [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+      );
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [16, 9],
+    });
+    if (res.canceled || !res.assets?.length) return;
+    setBannerUploading(true);
+    try {
+      const url = await uploadImage(res.assets[0].uri);
+      await api("/me/brand", { method: "PUT", body: { banner_url: url } });
+      await refreshUser();
+    } catch (e: any) {
+      Alert.alert("Upload failed", e?.message || "Please try again.");
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
+  const removeBanner = async () => {
+    setBannerUploading(true);
+    try {
+      await api("/me/brand", { method: "PUT", body: { banner_url: null } });
+      await refreshUser();
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
+  const saveTagline = async () => {
+    setSavingTagline(true);
+    try {
+      await api("/me/brand", { method: "PUT", body: { tagline: tagline.trim() || null } });
+      await refreshUser();
+    } finally {
+      setSavingTagline(false);
+    }
+  };
+
+  const pickAccent = (a: (typeof ACCENTS)[number]) => {
+    if (a.premium && !isPremium) {
+      Alert.alert("Premium color", "Upgrade to premium to unlock this theme color.");
+      return;
+    }
+    setAccent(a);
+  };
+
+  const pickFontPack = (p: (typeof FONT_PACKS)[number]) => {
+    if (p.premium && !isPremium) {
+      Alert.alert("Premium typography", "Upgrade to premium to unlock this font pack.");
+      return;
+    }
+    setFontPack(p.key);
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.headerRow, { paddingTop: insets.top + spacing.sm }]}>
@@ -91,7 +171,7 @@ export default function BrandStudio() {
         {/* Live preview */}
         <Text style={styles.sectionLabel}>PREVIEW</Text>
         <View style={styles.previewCard}>
-          <Image source={{ uri: coverFor("fitness") }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: bannerUrl || coverFor(user?.coach_specialty || "fitness") }} style={StyleSheet.absoluteFill} contentFit="cover" />
           <Scrim />
           <View style={styles.previewTop}>
             {logoUrl ? (
@@ -107,9 +187,39 @@ export default function BrandStudio() {
               <Text style={[styles.previewChipText, { color: colors.onBrand }]}>YOUR BRAND</Text>
             </View>
             <Text style={styles.previewTitle}>{user?.name || "Your Coaching"}</Text>
-            <Text style={styles.previewSub}>This is how your clients see you.</Text>
+            <Text style={styles.previewSub}>{tagline.trim() || "This is how your clients see you."}</Text>
           </View>
         </View>
+
+        {/* Banner */}
+        <Text style={styles.sectionLabel}>BANNER</Text>
+        <View style={styles.rowCard}>
+          <View style={styles.logoThumbWrap}>
+            {bannerUrl ? (
+              <Image source={{ uri: bannerUrl }} style={styles.logoThumb} contentFit="cover" />
+            ) : (
+              <Ionicons name="image-outline" size={22} color={colors.onSurfaceSecondary} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>{bannerUrl ? "Your banner" : "No banner yet"}</Text>
+            <Text style={styles.rowSub}>Wide cover photo behind your dashboard header</Text>
+          </View>
+          {bannerUploading ? (
+            <ActivityIndicator color={colors.brand} />
+          ) : (
+            <TouchableOpacity testID="upload-banner-btn" onPress={pickBanner} style={styles.uploadBtn}>
+              <Ionicons name={bannerUrl ? "swap-horizontal" : "cloud-upload"} size={16} color={colors.onBrand} />
+              <Text style={styles.uploadBtnText}>{bannerUrl ? "Replace" : "Upload"}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {bannerUrl && !bannerUploading ? (
+          <TouchableOpacity testID="remove-banner-btn" onPress={removeBanner} style={styles.removeRow}>
+            <Ionicons name="trash-outline" size={15} color={colors.onSurfaceSecondary} />
+            <Text style={styles.removeText}>Remove banner</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Logo */}
         <Text style={styles.sectionLabel}>LOGO</Text>
@@ -141,24 +251,83 @@ export default function BrandStudio() {
           </TouchableOpacity>
         ) : null}
 
+        {/* Studio title */}
+        <Text style={styles.sectionLabel}>STUDIO TITLE</Text>
+        <Text style={styles.helper}>
+          Replaces the auto-generated dashboard title (e.g. &ldquo;Fitness Coach HQ&rdquo;) with your own words.
+        </Text>
+        <View style={styles.taglineRow}>
+          <TextInput
+            testID="tagline-input"
+            style={styles.taglineInput}
+            value={tagline}
+            onChangeText={setTagline}
+            placeholder="e.g. Strength & Conditioning Studio"
+            placeholderTextColor={colors.onSurfaceSecondary}
+            maxLength={60}
+            onBlur={saveTagline}
+          />
+          {savingTagline ? (
+            <ActivityIndicator color={colors.brand} />
+          ) : (
+            <TouchableOpacity testID="save-tagline-btn" onPress={saveTagline} style={styles.smallSaveBtn}>
+              <Ionicons name="checkmark" size={18} color={colors.onBrand} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Brand color */}
         <Text style={styles.sectionLabel}>BRAND COLOR</Text>
-        <Text style={styles.helper}>Your accent color across the whole app and your clients&apos; experience.</Text>
+        <Text style={styles.helper}>15 accent colors — 7 free, 8 unlocked with premium.</Text>
         <View style={styles.swatchRow}>
-          {ACCENTS.map((a) => (
-            <TouchableOpacity
-              key={a.name}
-              testID={`accent-${a.name}`}
-              style={[styles.swatch, { backgroundColor: a.brand }, accentColor === a.brand && styles.swatchActive]}
-              onPress={() => setAccent(a)}
-            >
-              {accentColor === a.brand && <Ionicons name="checkmark" size={18} color={a.onBrand} />}
-            </TouchableOpacity>
-          ))}
+          {ACCENTS.map((a) => {
+            const locked = a.premium && !isPremium;
+            return (
+              <TouchableOpacity
+                key={a.name}
+                testID={`accent-${a.name}`}
+                style={[styles.swatch, { backgroundColor: a.brand }, accentColor === a.brand && styles.swatchActive]}
+                onPress={() => pickAccent(a)}
+              >
+                {locked ? (
+                  <Ionicons name="lock-closed" size={14} color={a.onBrand} />
+                ) : accentColor === a.brand ? (
+                  <Ionicons name="checkmark" size={18} color={a.onBrand} />
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
         </View>
         <Text style={styles.colorName}>
           {ACCENTS.find((a) => a.brand === accentColor)?.name ?? "Custom"}
         </Text>
+
+        {/* Typography */}
+        <Text style={styles.sectionLabel}>TYPOGRAPHY</Text>
+        <Text style={styles.helper}>Choose a heading style — 1 free, 2 unlocked with premium.</Text>
+        <View style={{ gap: spacing.sm }}>
+          {FONT_PACKS.map((p) => {
+            const locked = p.premium && !isPremium;
+            const active = fontPack === p.key;
+            return (
+              <TouchableOpacity
+                key={p.key}
+                testID={`font-pack-${p.key}`}
+                style={[styles.fontRow, active && styles.fontRowActive]}
+                onPress={() => pickFontPack(p)}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                    <Text style={[styles.fontRowTitle, { fontFamily: p.display }]}>{p.name}</Text>
+                    {locked ? <Ionicons name="lock-closed" size={13} color={colors.onSurfaceSecondary} /> : null}
+                  </View>
+                  <Text style={styles.rowSub}>{p.sub}</Text>
+                </View>
+                {active ? <Ionicons name="checkmark-circle" size={20} color={colors.brand} /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         <View style={styles.tipCard}>
           <Ionicons name="sparkles" size={16} color={colors.brand} />
@@ -230,6 +399,40 @@ const styles = StyleSheet.create({
   removeRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.md, alignSelf: "center", minHeight: 36 },
   removeText: { fontFamily: fonts.semiBold, fontSize: 12.5, color: colors.onSurfaceSecondary },
   helper: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.onSurfaceSecondary, marginBottom: spacing.md, lineHeight: 18 },
+  taglineRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  taglineInput: {
+    flex: 1,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceSecondary,
+    color: colors.onSurface,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+  },
+  smallSaveBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fontRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    minHeight: 64,
+  },
+  fontRowActive: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
+  fontRowTitle: { fontSize: 16, color: colors.onSurface },
   swatchRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   swatch: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
   swatchActive: { borderWidth: 3, borderColor: "#FFFFFF" },

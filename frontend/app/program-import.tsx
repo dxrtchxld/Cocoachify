@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -56,6 +58,40 @@ export default function ProgramImport() {
     }
   };
 
+  // Photos/Camera pickers only surface the device's photo library — they never
+  // show Google Drive, Files (iOS) or other cloud sources. The system
+  // document/file picker (Storage Access Framework on Android, Files app on
+  // iOS) is the one that lists Google Drive if it's installed.
+  const pickFromFiles = async () => {
+    setError(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "image/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      if (Platform.OS === "web" && asset.file) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(asset.file as Blob);
+        });
+        setImageUri(asset.uri);
+        setImageBase64(base64);
+        return;
+      }
+      const file = new File(asset.uri);
+      const base64 = await file.base64();
+      setImageUri(asset.uri);
+      setImageBase64(base64);
+    } catch {
+      setError("Couldn't read that file. Try picking a different one.");
+    }
+  };
+
   const extract = async () => {
     if (!imageBase64) return;
     setExtracting(true);
@@ -84,9 +120,9 @@ export default function ProgramImport() {
         </View>
 
         <Text style={styles.sub}>
-          Snap a photo of a written program, or pick one from your files — including{" "}
-          <Text style={{ fontFamily: fonts.bold, color: colors.onSurface }}>Google Drive</Text> via
-          your device&apos;s picker. AI will turn it into an editable program.
+          Snap a photo of a written program, pick one from Photos, or import from{" "}
+          <Text style={{ fontFamily: fonts.bold, color: colors.onSurface }}>Files — including Google Drive</Text>{" "}
+          if you have it installed. AI will turn it into an editable program.
         </Text>
 
         <View style={styles.pickRow}>
@@ -98,7 +134,11 @@ export default function ProgramImport() {
           )}
           <TouchableOpacity testID="pick-library" style={styles.pickCard} onPress={() => pick("library")}>
             <Ionicons name="images" size={28} color={colors.brand} />
-            <Text style={styles.pickText}>Photos / Drive</Text>
+            <Text style={styles.pickText}>Photos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="pick-files" style={styles.pickCard} onPress={pickFromFiles}>
+            <Ionicons name="cloud-outline" size={28} color={colors.brand} />
+            <Text style={styles.pickText}>Files / Drive</Text>
           </TouchableOpacity>
         </View>
 

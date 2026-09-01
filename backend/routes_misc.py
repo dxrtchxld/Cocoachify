@@ -33,6 +33,7 @@ async def set_role(body: RoleBody, user: dict = Depends(get_current_user)):
 
 class ThemeBody(BaseModel):
     theme_color: str = Field(pattern="^#[0-9A-Fa-f]{6}$")
+    font_pack: str | None = Field(default=None, max_length=30)
 
 
 DASHBOARD_SECTIONS = ["stats", "quick_actions", "needs_attention", "inbox_preview", "recent_activity"]
@@ -79,22 +80,38 @@ async def set_dashboard_layout(body: DashboardLayoutBody, user: dict = Depends(g
 
 @router.put("/me/theme")
 async def set_theme(body: ThemeBody, user: dict = Depends(get_current_user)):
-    await db.users.update_one(
-        {"user_id": user["user_id"]}, {"$set": {"theme_color": body.theme_color}}
-    )
+    from branding import accent_allowed, font_pack_allowed
+
+    is_premium = user.get("is_premium", False)
+    if not accent_allowed(body.theme_color.upper(), is_premium):
+        raise HTTPException(status_code=403, detail="That color is a premium unlock")
+    update = {"theme_color": body.theme_color.upper()}
+    if body.font_pack:
+        if not font_pack_allowed(body.font_pack, is_premium):
+            raise HTTPException(status_code=403, detail="That font pack is a premium unlock")
+        update["font_pack"] = body.font_pack
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": update})
     updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return user_public(updated)
 
 
 class BrandBody(BaseModel):
     logo_url: str | None = Field(default=None, max_length=500)
+    banner_url: str | None = Field(default=None, max_length=500)
+    tagline: str | None = Field(default=None, max_length=60)
 
 
 @router.put("/me/brand")
 async def set_brand(body: BrandBody, user: dict = Depends(get_current_user)):
-    await db.users.update_one(
-        {"user_id": user["user_id"]}, {"$set": {"brand_logo": body.logo_url}}
-    )
+    update = {}
+    if "logo_url" in body.model_fields_set:
+        update["brand_logo"] = body.logo_url
+    if "banner_url" in body.model_fields_set:
+        update["brand_banner"] = body.banner_url
+    if "tagline" in body.model_fields_set:
+        update["brand_tagline"] = (body.tagline or "").strip()[:60] or None
+    if update:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": update})
     updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return user_public(updated)
 
@@ -321,6 +338,11 @@ async def accept_invite(body: InviteAccept, user: dict = Depends(get_current_use
     await db.users.update_one(
         {"user_id": user["user_id"]}, {"$set": {"coach_id": coach["user_id"]}}
     )
+
+    from automations import run_automations
+
+    await run_automations(coach["user_id"], "client_connected", user["user_id"], {})
+
     return {"ok": True, "coach": {"user_id": coach["user_id"], "name": coach.get("name"), "email": coach["email"]}}
 
 

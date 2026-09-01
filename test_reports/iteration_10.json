@@ -1,0 +1,51 @@
+{
+  "summary": "Frontend-only testing of Brand Studio customization (banner, studio title, 15 accent colors, 3 typography packs with premium gating) and app-wide emoji removal, on Expo web preview (mobile viewport 375x667), coach jcgfit@gmail.com (premium) + 3 fresh throwaway coach signups (non-premium). CONFIRMED WORKING: banner upload/preview/removal (reflects on CoachHome header behind banner), Studio Title override + fallback to auto-generated title when cleared, 15 accent swatches render (7 free + 8 premium-locked with lock icons for non-premium accounts), 3 typography rows render in visually distinct fonts (Signature/Oswald, Bold Impact/Anton, Editorial Mono/SpaceMono) with correct premium lock icons for non-premium accounts, backend PUT /api/me/theme and /api/me/brand both persist correctly (verified via network capture + full page reload showing correct saved state), emoji removal confirmed clean on Home, role-select, onboarding, Programs tab (category badges use icons not emoji), Settings specialty chips (plain text, no emoji), Booking page. FOUND ONE CRITICAL BUG (see below) that undermines the whole live-preview promise of the feature: selecting any accent color or font pack visually SNAPS BACK to the previous selection within ~1-2s of tapping it, on BOTH premium and non-premium accounts, even though the underlying PUT request succeeds and the choice IS correctly persisted server-side (confirmed only visible again after a full page reload). This makes the feature look completely broken to a real user despite the backend being correct.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "src/context/ThemeContext.tsx (ThemeProvider useEffect, lines 86-98)",
+        "issue": "CRITICAL: Picking a new accent color or font pack in Brand Studio visually reverts to the OLD selection within ~1-2 seconds, even though the PUT /api/me/theme call succeeds (200) and the new value IS saved correctly server-side. Root cause: the useEffect that syncs theme from `user` has `accentColor`/`fontPack` themselves in its OWN dependency array. Flow: pickAccent() -> setAccent(a) optimistically calls setAccentColor(a.brand) (local state) + fires PUT in background (no refreshUser() afterwards). This state change re-triggers the useEffect (because accentColor is a dependency), which re-reads `user?.theme_color` from AuthContext -- but AuthContext's `user` object was NEVER refreshed with the new value (setAccent/setFontPack never call refreshUser()), so `user.theme_color` is still the OLD value. The effect sees `accent.brand !== accentColor` (true, since accentColor just changed to the NEW value) and immediately calls applyAccent(oldAccent) + setAccentColor(oldValue) again, undoing the user's tap. Verified via network capture: PUT payload confirmed correct new color sent + 200 response, but same-session UI reverts; a hard page reload afterwards correctly shows the new color selected (proving persistence works, only the live client-side sync is broken).",
+        "testID": "accent-<ColorName> / font-pack-<key>",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "app/_layout.tsx (ThemedApp, `<View key={version}>`)",
+        "issue": "Every accent color or font pack change increments ThemeContext's `version` state, which is used as a `key` prop on the single View wrapping the ENTIRE app Stack navigator. This forces a full unmount/remount of every screen in the navigation stack on every single theme tweak (not just a style recalculation), causing visible flicker and resetting scroll position to the top of whatever screen is showing (reproduced consistently on Brand Studio: scrolling down to the color/typography section and tapping a swatch always snaps the ScrollView back to the top). This is a very heavy-handed way to force color/font re-render and compounds the revert bug above by making it hard for users to even see what they tapped.",
+        "testID": "accent-<ColorName>",
+        "priority": "HIGH"
+      },
+      {
+        "component": "app/brand-studio.tsx (pickAccent locked-color Alert)",
+        "issue": "Could not visually confirm the 'Premium color... upgrade' Alert.alert() actually renders on Web when a non-premium account taps a locked swatch (e.g. Onyx Gold) — no browser-native dialog event fired (Playwright 'dialog' listener never triggered) and no custom on-screen modal was visible in screenshots taken immediately after the tap. This may be a side-effect of the scroll-reset bug above masking the alert, or Alert.alert() may not be wired for react-native-web in this app. Needs manual verification on a native device or with RN Web's Alert polyfill checked directly.",
+        "testID": "accent-Onyx Gold",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix ThemeContext.tsx useEffect: remove `accentColor`/`fontPack` from its own dependency array (or better, call `refreshUser()` inside setAccent()/setFontPack() right after the PUT succeeds, and let AuthContext's user update naturally drive the effect instead of relying on the effect's self-referential deps). This is the CRITICAL fix — without it, users will believe color/font selection is broken since their tap visibly reverts.",
+    "Reconsider the `key={version}` full-Stack remount in app/_layout.tsx — a full app remount on every theme tweak is excessive; the underlying `colors`/`fonts` are already mutated module-level objects, so a lighter-weight re-render mechanism (e.g. a context version number consumed only by StyleSheet-dependent leaf components, or forcing a re-render via context value change without remounting the whole Stack) would avoid the scroll-reset/flicker side effect.",
+    "Verify Alert.alert() for locked premium colors/fonts actually surfaces on web (react-native-web) — could not confirm visually in this environment; recommend a native device check or explicit RN-web Alert polyfill review.",
+    "Once the above is fixed, retest the full live-preview flow (color changes should visibly apply within the same tap, no revert, no scroll jump)."
+  ],
+  "critical_code_review_comments": [
+    "ThemeContext.tsx: the sync useEffect subscribes to the very state variables it also sets inside itself (`accentColor`, `fontPack` in deps AND setAccentColor/setFontPackState in body) — this pattern is fragile and is the direct cause of the critical revert bug found. Prefer deriving from `user` object identity/version only, not from the local mirrored state.",
+    "app/_layout.tsx: `<View key={version}>` wrapping the entire <Stack> is a very costly way to force theme re-application; a full app remount has broader risk (loses any in-flight navigation/form state anywhere in the app, not just Brand Studio) whenever the user changes their theme.",
+    "branding.py / ThemeContext.tsx ACCENTS+FONT_PACKS catalogs are correctly mirrored (15 colors, 3 font packs, same premium flags) — good separation of server-side enforcement, this part is solid."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not in scope this round)", "frontend": "70% — banner/title/lock-gating/emoji-removal all pass; the core 'live preview updates instantly' promise of the color/typography picker fails due to the critical revert bug (functionality persists correctly server-side but the UX is broken)"},
+  "seed_data_creation": "Created 3 throwaway coach accounts (TEST_newcoach<random>@example.com / TestPass1234!) via the app's real sign-up flow to verify non-premium lock behavior; left in DB, low-risk test clutter, easily identifiable by TEST_ prefix and 0 clients/programs.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The banner, studio title, 15-color catalog, typography catalog, and server-side premium enforcement are ALL correct and working (confirmed via network capture + DB persistence via reload). The one blocking issue is purely client-side state-sync in ThemeContext.tsx: after fixing the useEffect dependency loop (and ideally calling refreshUser() after theme PUTs), retest that tapping a color/font pack updates the checkmark AND the live preview chip color INSTANTLY and STAYS, without needing a page reload, and without the ScrollView jumping to the top.",
+  "rca_of_issue": "ThemeContext.tsx ThemeProvider: `useEffect(() => {...}, [user?.theme_color, user?.font_pack, accentColor, fontPack])` includes its own managed state (accentColor, fontPack) in the dependency array. setAccent()/setFontPack() optimistically update accentColor/fontPack via setState, then fire a background PUT to /me/theme WITHOUT calling refreshUser() afterwards. The state update immediately re-fires the useEffect (due to accentColor/fontPack being deps); the effect compares the just-changed local state against the STILL-STALE `user.theme_color`/`user.font_pack` (never refreshed) and, finding a mismatch, forcibly resets accentColor/fontPack back to the old server-known value, incrementing `version` again in the process. Net effect: the user's tap visually reverts almost instantly, though the original PUT call itself already succeeded and persisted correctly (confirmed via a hard page reload afterwards, which re-fetches `user` fresh from the server with the correct new theme_color and displays it correctly, no revert). Reproduced consistently across 1 premium account and 3 fresh non-premium accounts."
+}

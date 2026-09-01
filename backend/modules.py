@@ -18,6 +18,7 @@ MODULES: dict[str, tuple[str, str, bool]] = {
     "memberships": ("Memberships", "Recurring access with grace-period rules", False),
     "assistant": ("Coach Assistant", "Consent-based drafting of agendas and summaries", False),
     "files": ("Private Library", "Worksheets, recordings and PDFs in private storage", False),
+    "automations": ("Automations", "Rule-based workflows that react to lessons, check-ins and memberships", False),
 }
 
 DEFAULT_FLAGS = {k: v[2] for k, v in MODULES.items()}

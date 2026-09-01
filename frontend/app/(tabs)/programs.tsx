@@ -121,7 +121,7 @@ export default function Programs() {
             onPress={() => setCategory(c)}
           >
             <Text style={[styles.catText, category === c && styles.catTextActive]}>
-              {c === "all" ? "All" : `${categoryMeta[c]?.emoji ?? ""} ${capitalize(c)}`}
+            {c === "all" ? "All" : capitalize(c)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -172,9 +172,10 @@ export default function Programs() {
                 />
                 <Scrim />
                 <View style={styles.cardTopRow}>
-                  <View style={[styles.catBadge, { backgroundColor: meta.bg }]}>
+                  <View style={[styles.catBadge, { backgroundColor: meta.bg, flexDirection: "row", alignItems: "center", gap: 4 }]}>
+                    <Ionicons name={meta.icon as any} size={11} color={meta.color} />
                     <Text style={[styles.catBadgeText, { color: meta.color }]}>
-                      {meta.emoji} {item.category.toUpperCase()}
+                      {item.category.toUpperCase()}
                     </Text>
                   </View>
                   <View style={styles.daysChip}>

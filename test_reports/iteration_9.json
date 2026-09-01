@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only verification of the Program Import 'Files / Drive' picker bug fix (app/program-import.tsx). Tested on Expo web preview (mobile viewport 390x844) with real coach account jcgfit@gmail.com. Confirmed: (1) screen now renders THREE picker cards on native (camera hidden correctly on web/Platform.OS check) — 'Photos' and 'Files / Drive' (cloud icon) both present with testIDs pick-library and pick-files; (2) updated copy correctly reads '...import from Files — including Google Drive if you have it installed...' replacing the old inaccurate copy; (3) REGRESSION check passed — Photos picker (pick-library) still works end-to-end: picked a synthetic program image, tapped Extract with AI, POST /api/programs/import-image succeeded and app navigated to /program-editor with a real AI-extracted program (name 'Strength Program - Week 1', description matched image content); (4) 'Files / Drive' button correctly triggers a SEPARATE native file-chooser dialog (expo-document-picker's getDocumentAsync) distinct from the Photos library picker — confirms the root-cause fix (system Files picker vs Photos picker) is correctly wired; (5) tapping Files/Drive and not selecting anything (cancel-equivalent) caused no crash, no error, screen remained intact. FOUND ONE BUG (see below): actually selecting a file through the Files/Drive picker throws a visible user-facing error 'Couldn't read that file. Try picking a different one.' on the web platform, because expo-file-system's new `File` class (used in pickFromFiles to call file.base64()) is NOT supported on web — confirmed by console log 'expo-file-system is not supported on web'. This means the new Files/Drive path is completely non-functional whenever a file IS actually selected on the web platform (works fine as a picker launcher, fails on read). Could not verify actual Google Drive file selection since that requires a real device with Drive app installed/signed-in, per review scope notes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "app/program-import.tsx (pickFromFiles)",
+        "issue": "On Expo WEB platform, selecting any file via the new 'Files / Drive' document picker fails to read with error 'Couldn't read that file. Try picking a different one.' Root cause: `new File(asset.uri)` + `file.base64()` from expo-file-system relies on the new File/Directory API which is NOT implemented for web (confirmed via console: 'expo-file-system is not supported on web'). The picker dialog itself opens correctly (that part of the fix works), but reading the picked file always fails on web. Native iOS/Android behavior is unverified in this environment but the code path itself has no Platform.OS branch/fallback for web, so if this app is ever accessed via web browser (which this environment supports, e.g., Expo web preview or a deployed web build), the feature is fully broken end-to-end there.",
+        "testID": "pick-files",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix pickFromFiles() to handle the web platform: either (a) use expo-file-system's legacy readAsStringAsync-style API (which does support web) instead of the new File class, guarded by Platform.OS === 'web', or (b) since DocumentPicker on web already returns a usable blob URI, read it via fetch(asset.uri) + FileReader/blob-to-base64 instead of expo-file-system's File class. This only matters if the app targets web access at all — if the app is native-only in production, this can be deprioritized, but worth a Platform.OS guard regardless to avoid the confusing generic error.",
+    "Actual Google Drive file selection still needs a real signed-in device (iOS/Android) for full end-to-end verification — out of scope for this environment, as noted in the review request."
+  ],
+  "critical_code_review_comments": [
+    "app/program-import.tsx pickFromFiles() (lines 65-82): good comment explaining the root cause fix; correctly uses expo-document-picker with type 'image/*'. However no Platform.OS branching for the file-read step, so it silently fails on web with a generic caught error. Consider Platform-specific base64 read logic.",
+    "Copy update (line 111-115) reads naturally and accurately: 'Snap a photo... pick one from Photos, or import from Files — including Google Drive if you have it installed.' — matches requested wording intent.",
+    "Camera button correctly hidden via `Platform.OS !== 'web'` check (line 118) — expected behavior on web preview, not a bug."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not in scope)", "frontend": "80% (4/5 sub-checks fully pass: UI copy, 3-button layout/testIDs, Photos regression full pipeline, Files/Drive picker-launch distinct from Photos + graceful no-op; 1/5 partial fail: Files/Drive actual file read fails on web platform)"},
+  "seed_data_creation": "Created one real program via AI extraction from a synthetic test image during the Photos regression test (program 'Strength Program - Week 1', id prog_32fbb6995cb7) under jcgfit@gmail.com's account — left in DB as it's a harmless legitimate test of the AI pipeline, not cleaned up (minor, low-risk clutter in coach's 61-program list).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Testing environment is Expo WEB preview only — no access to a real iOS/Android device with Google Drive signed in, so the core 'does Drive actually show up' question from the original bug report cannot be verified here; only the code-path correctness (right picker API being called) was verifiable. The Files/Drive picker DOES correctly open a distinct system file chooser (not photos library) confirming the root architectural fix is correct. But there's a secondary web-platform-specific bug in the file-reading step (expo-file-system File class unsupported on web) that surfaces a confusing error to end users if they pick a file while using the web build/preview. Recommend also testing on a real native device build if available for full confidence, since expo-file-system's File API likely works fine natively (iOS/Android) — the failure observed is specifically a web-only limitation.",
+  "rca_of_issue": "pickFromFiles() in program-import.tsx calls `new File(asset.uri)` then `await file.base64()` from expo-file-system (SDK's newer File/Directory class-based API). This new API is documented/known to not have a web implementation (only native iOS/Android). Reproduction: on Expo web preview, tap 'Files / Drive' -> select any image file via the browser's native file input -> catch block fires -> setError('Couldn't read that file...') is shown, confirmed via console log 'expo-file-system is not supported on web'. Mitigation: branch on Platform.OS === 'web' and use fetch(asset.uri).then(r => r.blob()) + a blob-to-base64 FileReader conversion instead, or use the legacy expo-file-system readAsStringAsync API if still available for web in the installed SDK version."
+}

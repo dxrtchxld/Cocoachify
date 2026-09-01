@@ -17,11 +17,11 @@ export default function RoleSelect() {
   const [busy, setBusy] = useState(false);
 
   const SPECIALTIES = [
-    { id: "fitness", label: "💪 Fitness" },
-    { id: "yoga", label: "🧘 Yoga" },
-    { id: "breathwork", label: "🌬️ Breathwork" },
-    { id: "mobility", label: "🤸 Mobility" },
-    { id: "mindfulness", label: "🌿 Mindfulness" },
+    { id: "fitness", label: "Fitness" },
+    { id: "yoga", label: "Yoga" },
+    { id: "breathwork", label: "Breathwork" },
+    { id: "mobility", label: "Mobility" },
+    { id: "mindfulness", label: "Mindfulness" },
   ];
 
   const confirm = async () => {

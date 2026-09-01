@@ -130,11 +130,11 @@ export default function Settings() {
               <Text style={styles.rowSub}>This shapes your dashboard language and defaults.</Text>
               <View style={styles.specRow}>
                 {[
-                  { id: "fitness", label: "💪 Fitness" },
-                  { id: "yoga", label: "🧘 Yoga" },
-                  { id: "breathwork", label: "🌬️ Breathwork" },
-                  { id: "mobility", label: "🤸 Mobility" },
-                  { id: "mindfulness", label: "🌿 Mindfulness" },
+                  { id: "fitness", label: "Fitness" },
+                  { id: "yoga", label: "Yoga" },
+                  { id: "breathwork", label: "Breathwork" },
+                  { id: "mobility", label: "Mobility" },
+                  { id: "mindfulness", label: "Mindfulness" },
                 ].map((s) => (
                   <TouchableOpacity
                     key={s.id}

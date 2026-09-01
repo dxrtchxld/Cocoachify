@@ -55,14 +55,14 @@ type ClientDetail = {
 type Program = { id: string; name: string; category: string; total_days: number; difficulty: string };
 
 const LABELS: Record<string, string> = {
-  lose_weight: "🔥 Lose Weight",
-  build_strength: "💪 Build Strength",
-  cardio: "🏃 Cardio / Endurance",
-  flexibility: "🧘 Flexibility / Mobility",
-  wellness: "⚖️ General Wellness",
-  just_starting: "🌱 Just Starting",
-  some_experience: "🔁 Some Experience",
-  experienced: "⚡ Experienced",
+  lose_weight: "Lose Weight",
+  build_strength: "Build Strength",
+  cardio: "Cardio / Endurance",
+  flexibility: "Flexibility / Mobility",
+  wellness: "General Wellness",
+  just_starting: "Just Starting",
+  some_experience: "Some Experience",
+  experienced: "Experienced",
   upper_body: "Upper Body",
   lower_body: "Lower Body",
   core_back: "Core & Back",

@@ -92,6 +92,10 @@ async def achieve_milestone(milestone_id: str, user: dict = Depends(get_current_
         {"$set": {"status": "achieved" if achieved else "pending",
                   "achieved_at": datetime.now(timezone.utc) if achieved else None}},
     )
+    if achieved:
+        from automations import run_automations
+
+        await run_automations(coach_id, "milestone_completed", m["client_id"], {})
     return {"ok": True, "status": "achieved" if achieved else "pending"}
 
 
@@ -168,6 +172,10 @@ async def log_goal_progress(goal_id: str, body: GoalProgressBody, user: dict = D
         {"id": goal_id}, {"$set": {"current_value": body.current_value, "status": status,
                                    "updated_at": datetime.now(timezone.utc)}}
     )
+    if status == "achieved" and goal.get("status") != "achieved":
+        from automations import run_automations
+
+        await run_automations(goal["coach_id"], "goal_completed", goal["client_id"], {})
     return {"ok": True, "current_value": body.current_value, "status": status}
 
 
@@ -432,6 +440,11 @@ async def respond_template(template_id: str, body: ResponseBody, user: dict = De
         "created_at": datetime.now(timezone.utc),
     }
     await db.checkin_responses.insert_one(dict(doc))
+
+    from automations import run_automations
+
+    await run_automations(coach_id, "checkin_submitted", user["user_id"], {})
+
     return _clean(doc)
 
 

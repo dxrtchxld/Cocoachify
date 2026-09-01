@@ -218,7 +218,7 @@ export default function CoachHome() {
             </View>
             {newCheckins.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>You&apos;re all caught up. 🎉</Text>
+                <Text style={styles.emptyText}>You&apos;re all caught up.</Text>
               </View>
             ) : (
               newCheckins.slice(0, 4).map((i) => (
@@ -301,28 +301,40 @@ export default function CoachHome() {
           />
         }
       >
-        <View style={styles.header}>
-          {mediaUrl(user?.brand_logo) ? (
-            <Image source={{ uri: mediaUrl(user?.brand_logo)! }} style={styles.brandLogo} contentFit="contain" />
+        <View style={user?.brand_banner ? styles.headerBannerWrap : undefined}>
+          {user?.brand_banner ? (
+            <>
+              <Image source={{ uri: mediaUrl(user.brand_banner)! }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <View style={styles.headerScrim} />
+            </>
           ) : null}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>
-              {vocabFor(user?.coach_specialty).emoji}{" "}
-              {user?.coach_specialty ? `${user.coach_specialty.toUpperCase()} ` : ""}
-              {vocabFor(user?.coach_specialty).homeTitle}
-            </Text>
-            <Text style={styles.sub}>
-              Today&apos;s triage — which {vocabFor(user?.coach_specialty).clientWord} need you first.
-            </Text>
+          <View style={styles.header}>
+            {mediaUrl(user?.brand_logo) ? (
+              <Image source={{ uri: mediaUrl(user?.brand_logo)! }} style={styles.brandLogo} contentFit="contain" />
+            ) : null}
+            <View style={{ flex: 1 }}>
+              <View style={styles.titleRow}>
+                <Ionicons name={vocabFor(user?.coach_specialty).icon as any} size={16} color={colors.brand} />
+                <Text style={styles.title}>
+                  {" "}
+                  {user?.brand_tagline?.trim()
+                    ? user.brand_tagline
+                    : `${user?.coach_specialty ? `${user.coach_specialty.toUpperCase()} ` : ""}${vocabFor(user?.coach_specialty).homeTitle}`}
+                </Text>
+              </View>
+              <Text style={styles.sub}>
+                Today&apos;s triage — which {vocabFor(user?.coach_specialty).clientWord} need you first.
+              </Text>
+            </View>
+            <TouchableOpacity
+              testID="customize-dashboard-btn"
+              style={styles.customizeBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push("/dashboard-customize")}
+            >
+              <Ionicons name="options" size={20} color={colors.onSurface} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            testID="customize-dashboard-btn"
-            style={styles.customizeBtn}
-            activeOpacity={0.8}
-            onPress={() => router.push("/dashboard-customize")}
-          >
-            <Ionicons name="options" size={20} color={colors.onSurface} />
-          </TouchableOpacity>
         </View>
 
         {layout.filter((s) => s.visible).map((s) => renderSection(s.key))}
@@ -351,6 +363,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  headerBannerWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,10,10,0.55)" },
+  titleRow: { flexDirection: "row", alignItems: "center" },
   brandLogo: { width: 40, height: 40, borderRadius: radius.sm, marginRight: spacing.md },
   customizeBtn: {
     width: 40,

@@ -89,6 +89,9 @@ async def activate_subscription(user_id: str, plan_id: str, checkout_session_id:
             "last_payment_at": now,
             "checkout_session_id": checkout_session_id,
         })
+        from automations import run_automations
+
+        await run_automations(plan["coach_id"], "membership_started", user_id, {"plan_id": plan_id})
 
     # Grant the plan's courses (idempotent enroll / re-activate)
     from routes_courses import enroll_client
