@@ -3,8 +3,10 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -116,6 +118,26 @@ export default function ClientScreen() {
     }
   };
 
+  const removeClient = () => {
+    const doRemove = async () => {
+      try {
+        await api(`/coach/clients/${id}`, { method: "DELETE" });
+        router.back();
+      } catch {
+        // ignore
+      }
+    };
+    const msg = `Remove ${client?.name || "this client"}? They'll be disconnected and their active program ended. Their history is kept.`;
+    if (Platform.OS === "web") {
+      if (confirm(msg)) doRemove();
+    } else {
+      Alert.alert("Remove client", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: doRemove },
+      ]);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -139,6 +161,9 @@ export default function ClientScreen() {
         <View style={styles.headerRow}>
           <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
+          </TouchableOpacity>
+          <TouchableOpacity testID="remove-client-btn" onPress={removeClient} style={styles.backBtn}>
+            <Ionicons name="person-remove-outline" size={20} color={colors.onSurfaceSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -343,7 +368,7 @@ function formatDate(iso: string): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  headerRow: { paddingHorizontal: spacing.lg },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.lg },
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   profileRow: {
     flexDirection: "row",

@@ -86,6 +86,19 @@ async def set_theme(body: ThemeBody, user: dict = Depends(get_current_user)):
     return user_public(updated)
 
 
+class BrandBody(BaseModel):
+    logo_url: str | None = Field(default=None, max_length=500)
+
+
+@router.put("/me/brand")
+async def set_brand(body: BrandBody, user: dict = Depends(get_current_user)):
+    await db.users.update_one(
+        {"user_id": user["user_id"]}, {"$set": {"brand_logo": body.logo_url}}
+    )
+    updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return user_public(updated)
+
+
 AFFIRMATIONS = [
     "Consistency beats intensity. Show up today.",
     "Your body achieves what your mind believes.",

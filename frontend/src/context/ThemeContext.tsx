@@ -14,11 +14,13 @@ export type Accent = {
 };
 
 export const ACCENTS: Accent[] = [
-  { name: "Neon Green", brand: "#34E27A", onBrand: "#06130B", secondary: "#7CF5AC", tertiary: "#0E2A1A", onTertiary: "#A8F5C8" },
-  { name: "Teal", brand: "#2DD4BF", onBrand: "#06211D", secondary: "#7EEADD", tertiary: "#0B2723", onTertiary: "#A5F0E6" },
-  { name: "Coral", brand: "#FF4B3A", onBrand: "#FFFFFF", secondary: "#FF7B6E", tertiary: "#3A1512", onTertiary: "#FFBDB8" },
-  { name: "Purple", brand: "#A78BFA", onBrand: "#160E2E", secondary: "#C4B0FF", tertiary: "#1D1533", onTertiary: "#D8CCFF" },
-  { name: "Gold", brand: "#FBBF24", onBrand: "#211703", secondary: "#FDD97C", tertiary: "#2A2208", onTertiary: "#FDE6A8" },
+  { name: "Champagne", brand: "#E5D0A1", onBrand: "#0A0A0A", secondary: "#B39D73", tertiary: "#2A261C", onTertiary: "#E5D0A1" },
+  { name: "Platinum", brand: "#E7E7EA", onBrand: "#0A0A0A", secondary: "#A1A1AA", tertiary: "#242427", onTertiary: "#E7E7EA" },
+  { name: "Emerald", brand: "#34E27A", onBrand: "#06130B", secondary: "#7CF5AC", tertiary: "#0E2A1A", onTertiary: "#A8F5C8" },
+  { name: "Sky", brand: "#8EC5FF", onBrand: "#04121F", secondary: "#BFDCFF", tertiary: "#111E2A", onTertiary: "#D6E9FF" },
+  { name: "Coral", brand: "#FF6F61", onBrand: "#1F0704", secondary: "#FF9C91", tertiary: "#2A1512", onTertiary: "#FFC7C0" },
+  { name: "Violet", brand: "#C4B0FF", onBrand: "#160E2E", secondary: "#D8CCFF", tertiary: "#1D1533", onTertiary: "#E7DEFF" },
+  { name: "Rose", brand: "#F5A3C7", onBrand: "#2A0E1A", secondary: "#F9C3DA", tertiary: "#2E1621", onTertiary: "#FCD9E8" },
 ];
 
 function applyAccent(a: Accent) {

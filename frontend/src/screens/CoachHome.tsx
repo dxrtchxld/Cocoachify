@@ -13,9 +13,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { api } from "@/src/lib/api";
+import { api, mediaUrl } from "@/src/lib/api";
 import { vocabFor } from "@/src/lib/vocab";
 import { colors, fonts, radius, spacing } from "@/src/theme";
+import { Image } from "expo-image";
 
 type Stats = { clients: number; programs: number; active_pct: number };
 type Client = {
@@ -292,6 +293,9 @@ export default function CoachHome() {
         }
       >
         <View style={styles.header}>
+          {mediaUrl(user?.brand_logo) ? (
+            <Image source={{ uri: mediaUrl(user?.brand_logo)! }} style={styles.brandLogo} contentFit="contain" />
+          ) : null}
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>
               {vocabFor(user?.coach_specialty).emoji}{" "}
@@ -337,7 +341,8 @@ function formatDate(iso: string): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  header: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  brandLogo: { width: 40, height: 40, borderRadius: radius.sm, marginRight: spacing.md },
   customizeBtn: {
     width: 40,
     height: 40,

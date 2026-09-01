@@ -49,6 +49,7 @@ def user_public(user: dict) -> dict:
         "role": user.get("role"),
         "coach_specialty": user.get("coach_specialty"),
         "theme_color": user.get("theme_color"),
+        "brand_logo": user.get("brand_logo"),
         "is_coach": user.get("role") == "coach",
         "is_premium": user.get("is_premium", False),
         "coach_id": user.get("coach_id"),

@@ -35,6 +35,7 @@ users (role, onboarding{goal,experience,days_per_week,focus,notes}, coach_id, is
 ## Test credentials: /app/memory/test_credentials.md
 
 ## NEXT (in priority order, defaults pending user confirmation)
+0. PHASE 4 PREMIUM REDESIGN (in progress). Blueprint: /app/design_guidelines.json ("Glass / Luxe DARK" — obsidian #0A0A0A + champagne-gold #E5D0A1, cinematic hero imagery, frosted glass, sticky CTAs). DONE: new theme tokens (src/theme.ts) app-wide; brand-color presets expanded (ThemeContext ACCENTS: Champagne default +6); Scrim + Segmented components; Programs Library cinematic cover cards (categoryCover/coverFor); Program Detail hero + 3 layout views (Week/List/Calendar). Backend _program_summary returns cover_image. REMAINING: Coach Home polish; Client Today session player; builder polish; Inbox/Chat bubbles; Client Detail polish; FULL Brand Studio (logo + cover-image UPLOAD via Emergent Object Storage — needs integration_expert).
 1. ~~Import real data~~ ✅ DONE — migrated from Firestore (somatic-wealth) via /app/backend/scripts/migrate_firestore.py: 15 users (2 coaches, 13 clients), 89 programs, 437 sessions, 137 enrollments, 7 chat messages, 52 check-ins. Firestore UIDs kept as Mongo user_id/program id so Google login (by email) resolves migrated accounts.
 2. Coach Inbox (check-in review All/New/Urgent/Watch) + Exercise Library tool.
 3. Ask Coach chat, water counter, daily affirmation on client home.

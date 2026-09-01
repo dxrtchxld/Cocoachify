@@ -206,6 +206,19 @@ export default function Settings() {
               <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="brand-studio-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/brand-studio")}
+            >
+              <Ionicons name="color-palette" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Brand studio</Text>
+                <Text style={styles.rowSub}>Your logo, brand color & client-facing look</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
               testID="customize-home-row"
               style={styles.row}
               activeOpacity={0.7}

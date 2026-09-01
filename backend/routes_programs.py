@@ -24,6 +24,7 @@ def _program_summary(p: dict) -> dict:
         "days_per_week": p.get("days_per_week", 0),
         "difficulty": p.get("difficulty", "beginner"),
         "spotify_url": p.get("spotify_url"),
+        "cover_image": p.get("cover_image"),
         "owner_id": p.get("owner_id"),
         "session_count": len([s for s in schedule if s]),
         "created_at": p["created_at"].isoformat() if isinstance(p.get("created_at"), datetime) else p.get("created_at"),
@@ -154,6 +155,7 @@ class ProgramBody(BaseModel):
     total_days: int = Field(default=28)
     days_per_week: int = Field(default=3, ge=1, le=7)
     spotify_url: str | None = Field(default=None, max_length=500)
+    cover_image: str | None = Field(default=None, max_length=500)
     schedule: list[str | None] | None = None
 
 
@@ -195,6 +197,7 @@ async def create_program(body: ProgramBody, user: dict = Depends(get_current_use
         "total_days": body.total_days,
         "days_per_week": body.days_per_week,
         "spotify_url": body.spotify_url,
+        "cover_image": body.cover_image,
         "schedule": schedule,
         "owner_id": user["user_id"],
         "created_at": datetime.now(timezone.utc),
@@ -227,6 +230,7 @@ async def update_program(program_id: str, body: ProgramBody, user: dict = Depend
         "total_days": body.total_days,
         "days_per_week": body.days_per_week,
         "spotify_url": body.spotify_url,
+        "cover_image": body.cover_image if body.cover_image is not None else program.get("cover_image"),
         "schedule": schedule,
     }
     await db.programs.update_one({"id": program_id}, {"$set": update})

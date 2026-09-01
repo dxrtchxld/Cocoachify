@@ -1,10 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -17,9 +21,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
+import Scrim from "@/src/components/Scrim";
 import { useAuth } from "@/src/context/AuthContext";
-import { api } from "@/src/lib/api";
-import { categoryMeta, colors, fonts, radius, sessionTypeIcon, spacing } from "@/src/theme";
+import { api, uploadImage } from "@/src/lib/api";
+import { categoryMeta, colors, coverFor, fonts, radius, sessionTypeIcon, spacing } from "@/src/theme";
 
 type SessionSummary = { id: string; name: string; session_type: string; target_minutes: number; exercise_count: number };
 
@@ -35,6 +40,8 @@ export default function ProgramEditor() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
   const { user } = useAuth();
   const [category, setCategory] = useState(user?.coach_specialty ?? "fitness");
   const [difficulty, setDifficulty] = useState("beginner");
@@ -69,6 +76,7 @@ export default function ProgramEditor() {
         setName(p.name);
         setDescription(p.description ?? "");
         setSpotifyUrl(p.spotify_url ?? "");
+        setCoverImage(p.cover_image ?? null);
         setCategory(p.category);
         setDifficulty(p.difficulty);
         setTotalDays(p.total_days);
@@ -93,6 +101,42 @@ export default function ProgramEditor() {
 
   const sessionById = (sid: string | null) => sessions.find((s) => s.id === sid);
 
+  const pickCover = async () => {
+    const perm = await ImagePicker.getMediaLibraryPermissionsAsync();
+    let status = perm.status;
+    if (status !== "granted" && perm.canAskAgain) {
+      status = (await ImagePicker.requestMediaLibraryPermissionsAsync()).status;
+    }
+    if (status !== "granted") {
+      Alert.alert(
+        "Photo access needed",
+        "Allow photo access to set a cover photo.",
+        Platform.OS === "web"
+          ? [{ text: "OK" }]
+          : [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+      );
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [16, 10],
+    });
+    if (res.canceled || !res.assets?.length) return;
+    setCoverUploading(true);
+    try {
+      setCoverImage(await uploadImage(res.assets[0].uri));
+    } catch (e: any) {
+      Alert.alert("Upload failed", e?.message || "Please try again.");
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
   const save = async () => {
     setError(null);
     if (!name.trim()) {
@@ -109,6 +153,7 @@ export default function ProgramEditor() {
         total_days: totalDays,
         days_per_week: daysPerWeek,
         spotify_url: spotifyUrl.trim() || null,
+        cover_image: coverImage,
         schedule,
       };
       if (isEdit) {
@@ -162,6 +207,44 @@ export default function ProgramEditor() {
               placeholder="e.g. Rowing Strength Program"
               placeholderTextColor={colors.onSurfaceSecondary}
             />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Cover photo</Text>
+            <TouchableOpacity
+              testID="pick-cover-btn"
+              style={styles.coverPicker}
+              activeOpacity={0.85}
+              onPress={pickCover}
+              disabled={coverUploading}
+            >
+              <Image
+                source={{ uri: coverFor(category, coverImage) }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={200}
+              />
+              <Scrim />
+              <View style={styles.coverOverlay}>
+                {coverUploading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name={coverImage ? "swap-horizontal" : "image"} size={20} color="#FFFFFF" />
+                    <Text style={styles.coverText}>
+                      {coverImage ? "Change cover photo" : "Upload a cover photo"}
+                    </Text>
+                    <Text style={styles.coverHint}>Defaults to a curated image for the type</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+            {coverImage ? (
+              <TouchableOpacity testID="remove-cover-btn" onPress={() => setCoverImage(null)} style={styles.removeCoverRow}>
+                <Ionicons name="trash-outline" size={14} color={colors.onSurfaceSecondary} />
+                <Text style={styles.removeCoverText}>Use default image</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           <View style={styles.field}>
@@ -448,6 +531,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   typeCardActive: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
+  coverPicker: {
+    height: 150,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverOverlay: { alignItems: "center", gap: 4, paddingHorizontal: spacing.lg },
+  coverText: { fontFamily: fonts.bold, fontSize: 14, color: "#FFFFFF" },
+  coverHint: { fontFamily: fonts.regular, fontSize: 11, color: "rgba(255,255,255,0.8)" },
+  removeCoverRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: spacing.sm, alignSelf: "flex-start", minHeight: 32 },
+  removeCoverText: { fontFamily: fonts.semiBold, fontSize: 12, color: colors.onSurfaceSecondary },
   typeText: { fontFamily: fonts.semiBold, fontSize: 12, color: colors.onSurfaceSecondary },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {

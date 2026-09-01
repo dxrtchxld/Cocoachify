@@ -23,6 +23,12 @@ async def lifespan(app: FastAPI):
     await db.client_logs.create_index([("user_id", 1), ("date", -1)])
     await db.purchases.create_index("checkout_session_id", unique=True)
     await db.invites.create_index("code", unique=True)
+    try:
+        from storage import init_storage
+        init_storage()
+        logger.info("Object storage initialised")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Object storage init failed (uploads may retry): %s", exc)
     logger.info("Startup complete: indexes ensured")
     yield
     client.close()
@@ -46,6 +52,7 @@ import routes_logs
 import routes_misc
 import routes_payments
 import routes_programs
+import routes_uploads
 
 api_router.include_router(routes_auth.router)
 api_router.include_router(routes_programs.router)
@@ -55,6 +62,7 @@ api_router.include_router(routes_misc.router)
 api_router.include_router(routes_coach.router)
 api_router.include_router(routes_chat.router)
 api_router.include_router(routes_payments.router)
+api_router.include_router(routes_uploads.router)
 
 app.include_router(api_router)
 

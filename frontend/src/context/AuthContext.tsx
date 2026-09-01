@@ -22,6 +22,7 @@ export type User = {
   role: "coach" | "client" | null;
   coach_specialty: string | null;
   theme_color: string | null;
+  brand_logo: string | null;
   is_coach: boolean;
   is_premium: boolean;
   coach_id: string | null;

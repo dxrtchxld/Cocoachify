@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -13,9 +14,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Scrim from "@/src/components/Scrim";
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
-import { categoryMeta, colors, fonts, radius, spacing } from "@/src/theme";
+import { categoryMeta, colors, coverFor, fonts, radius, spacing } from "@/src/theme";
 
 type Program = {
   id: string;
@@ -26,6 +28,7 @@ type Program = {
   days_per_week: number;
   difficulty: string;
   session_count: number;
+  cover_image?: string | null;
 };
 
 const CATEGORIES = ["all", "fitness", "breathwork", "yoga", "mobility", "mindfulness"];
@@ -65,7 +68,10 @@ export default function Programs() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-        <Text style={styles.title}>PROGRAMS</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.kicker}>{isCoach ? "YOUR LIBRARY" : "YOUR PLANS"}</Text>
+          <Text style={styles.title}>Programs</Text>
+        </View>
         {isCoach && (
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <TouchableOpacity
@@ -104,7 +110,7 @@ export default function Programs() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ maxHeight: 48 }}
+        style={{ maxHeight: 46 }}
         contentContainerStyle={styles.catRow}
       >
         {CATEGORIES.map((c) => (
@@ -138,7 +144,7 @@ export default function Programs() {
               onPress={() => router.push("/program-editor")}
             >
               <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.brand }}>
-                Create your first program
+                Build your first program
               </Text>
             </TouchableOpacity>
           )}
@@ -147,16 +153,24 @@ export default function Programs() {
         <FlatList
           data={filtered}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.md, gap: spacing.md }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.md, gap: spacing.lg, paddingBottom: spacing.xxxl }}
           renderItem={({ item }) => {
             const meta = categoryMeta[item.category] ?? categoryMeta.fitness;
             return (
               <TouchableOpacity
                 testID={`program-card-${item.id}`}
                 style={styles.card}
-                activeOpacity={0.85}
+                activeOpacity={0.9}
                 onPress={() => router.push({ pathname: "/program/[id]", params: { id: item.id } })}
               >
+                <Image
+                  source={{ uri: coverFor(item.category, item.cover_image) }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  transition={250}
+                />
+                <Scrim />
                 <View style={styles.cardTopRow}>
                   <View style={[styles.catBadge, { backgroundColor: meta.bg }]}>
                     <Text style={[styles.catBadgeText, { color: meta.color }]}>
@@ -167,16 +181,12 @@ export default function Programs() {
                     <Text style={styles.daysChipText}>{item.total_days}d</Text>
                   </View>
                 </View>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                {item.description ? (
-                  <Text style={styles.cardDesc} numberOfLines={2}>
-                    {item.description}
+                <View style={styles.cardBottom}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.cardMeta}>
+                    {capitalize(item.difficulty)}  ·  {item.days_per_week}×/week  ·  {item.session_count} sessions
                   </Text>
-                ) : null}
-                <Text style={styles.cardMeta}>
-                  {capitalize(item.difficulty)} · {item.days_per_week} days/week ·{" "}
-                  {item.session_count} training days
-                </Text>
+                </View>
               </TouchableOpacity>
             );
           }}
@@ -194,12 +204,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
   },
-  title: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface, letterSpacing: 1 },
+  kicker: { fontFamily: fonts.semiBold, fontSize: 11, color: colors.brand, letterSpacing: 2 },
+  title: { fontFamily: fonts.displayBold, fontSize: 30, color: colors.onSurface, marginTop: 2 },
   newBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -237,7 +248,7 @@ const styles = StyleSheet.create({
   catRow: { gap: spacing.sm, paddingHorizontal: spacing.xl, alignItems: "center" },
   catChip: {
     paddingHorizontal: spacing.lg,
-    height: 38,
+    height: 36,
     justifyContent: "center",
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -246,27 +257,30 @@ const styles = StyleSheet.create({
   },
   catChipActive: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
   catText: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.onSurfaceSecondary },
-  catTextActive: { color: colors.onSurface },
+  catTextActive: { color: colors.brand },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   emptyTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.onSurface, marginTop: spacing.md },
   card: {
+    height: 200,
+    borderRadius: radius.xl,
+    overflow: "hidden",
     backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    justifyContent: "space-between",
     padding: spacing.lg,
   },
   cardTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  catBadge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.sm },
+  catBadge: { paddingHorizontal: spacing.sm, paddingVertical: 5, borderRadius: radius.sm },
   catBadgeText: { fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
   daysChip: {
-    backgroundColor: colors.surfaceTertiary,
+    backgroundColor: "rgba(0,0,0,0.45)",
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: radius.sm,
   },
-  daysChipText: { fontFamily: fonts.bold, fontSize: 11, color: colors.onSurfaceTertiary },
-  cardTitle: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.onSurface, marginTop: spacing.sm },
-  cardDesc: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.onSurfaceSecondary, marginTop: 4 },
-  cardMeta: { fontFamily: fonts.semiBold, fontSize: 11.5, color: colors.onSurfaceTertiary, marginTop: spacing.sm },
+  daysChipText: { fontFamily: fonts.bold, fontSize: 11, color: "#FFFFFF" },
+  cardBottom: {},
+  cardTitle: { fontFamily: fonts.displayBold, fontSize: 24, color: "#FFFFFF", lineHeight: 27 },
+  cardMeta: { fontFamily: fonts.semiBold, fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 6 },
 });

@@ -119,6 +119,22 @@ class AssignRequest(BaseModel):
     program_id: str = Field(min_length=1)
 
 
+@router.delete("/clients/{client_id}")
+async def remove_client(client_id: str, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    client = await db.users.find_one(
+        {"user_id": client_id, "coach_id": user["user_id"]}, {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    # Disconnect: keep their history, but unlink from this coach and end active programs.
+    await db.users.update_one({"user_id": client_id}, {"$set": {"coach_id": None}})
+    await db.user_programs.update_many(
+        {"user_id": client_id, "active": True}, {"$set": {"active": False}}
+    )
+    return {"ok": True}
+
+
 @router.post("/assign")
 async def assign_program(body: AssignRequest, user: dict = Depends(get_current_user)):
     require_coach(user)
