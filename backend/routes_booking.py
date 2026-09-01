@@ -4,10 +4,12 @@ A coach publishes a booking link (/book/{slug}); clients and prospects pick a
 free slot from the coach's weekly availability. Requests land as `pending` and
 the coach approves or declines. Approved bookings show on both sides.
 """
+import logging
 import re
 import uuid
 from datetime import date as date_cls
 from datetime import datetime, time, timedelta, timezone
+from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,6 +20,12 @@ from db import db
 from modules import get_flags, require_coach, require_module, workspace_coach_id
 
 router = APIRouter(tags=["booking"])
+logger = logging.getLogger(__name__)
+
+# A confirmed booking becomes reminder-eligible once it's this close — wide
+# enough that a periodic sweep (every ~15 min) always catches it once.
+REMINDER_MIN_HOURS = 20
+REMINDER_MAX_HOURS = 28
 
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
@@ -344,6 +352,7 @@ def _booking_public(b: dict) -> dict:
         "ends_at": _iso(b.get("ends_at")),
         "status": b.get("status"),
         "client_id": b.get("client_id"),
+        "reminded": bool(b.get("reminded_at")),
     }
 
 
@@ -408,3 +417,92 @@ async def my_booking_link(user: dict = Depends(get_current_user)):
     if not s or not s.get("enabled"):
         return {"available": False, "slug": None}
     return {"available": True, "slug": s["slug"], "path": f"/book/{s['slug']}"}
+
+
+# ---------------- Day-before reminders ----------------
+
+async def run_reminder_sweep(coach_id: str | None = None) -> dict:
+    """Find confirmed bookings ~a day out and nudge the person once.
+
+    In-app chat message for signed-in clients; email for anyone (guests
+    included) who left an address. Idempotent via `reminded_at`.
+    """
+    now = datetime.now(timezone.utc)
+    query: dict = {
+        "status": "confirmed",
+        "reminded_at": {"$exists": False},
+        "starts_at": {
+            "$gte": now + timedelta(hours=REMINDER_MIN_HOURS),
+            "$lte": now + timedelta(hours=REMINDER_MAX_HOURS),
+        },
+    }
+    if coach_id:
+        query["coach_id"] = coach_id
+    bookings = await db.bookings.find(query, {"_id": 0}).to_list(500)
+
+    chat_sent = 0
+    email_sent = 0
+    for b in bookings:
+        coach = await db.users.find_one({"user_id": b["coach_id"]}, {"_id": 0, "name": 1}) or {}
+        coach_name = coach.get("name") or "your coach"
+        starts = _aware(b.get("starts_at"))
+        settings = await db.booking_settings.find_one(
+            {"coach_id": b["coach_id"]}, {"_id": 0, "timezone": 1}
+        )
+        tz = _tz((settings or {}).get("timezone") or "UTC")
+        when_local = starts.astimezone(tz).strftime("%A, %B %d at %I:%M %p") if starts else ""
+
+        if b.get("client_id"):
+            text = (
+                f"\U0001F44B Friendly reminder — your {b.get('session_type_name')} with {coach_name} "
+                f"is tomorrow, {when_local}."
+            )
+            await db.messages.insert_one({
+                "id": f"msg_{uuid.uuid4().hex[:12]}",
+                "sender_id": b["coach_id"],
+                "recipient_id": b["client_id"],
+                "text": text,
+                "created_at": now,
+            })
+            chat_sent += 1
+
+        if b.get("email"):
+            try:
+                from email_service import EMAIL_FROM_NAME, send_email
+
+                subject = f"Reminder: your {b.get('session_type_name') or 'session'} is tomorrow"
+                location_html = (
+                    f'<p style="margin:0 0 12px">Location: {escape(b.get("location"))}</p>'
+                    if b.get("location") else ""
+                )
+                html = (
+                    '<table role="presentation" width="100%"><tr><td style="padding:24px;'
+                    'font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.5">'
+                    f'<p style="margin:0 0 12px">Hi {escape(b.get("name") or "there")},</p>'
+                    '<p style="margin:0 0 12px">Just a friendly reminder about your upcoming session:</p>'
+                    f'<p style="margin:0 0 4px;font-size:17px;font-weight:bold">'
+                    f'{escape(b.get("session_type_name") or "Coaching session")}</p>'
+                    f'<p style="margin:0 0 12px">{escape(when_local)} with {escape(coach_name)}</p>'
+                    f"{location_html}"
+                    '<p style="margin:0 0 12px">See you then!</p>'
+                    f'<p style="margin:24px 0 0;font-size:12px;color:#888">Sent by {escape(EMAIL_FROM_NAME)}.</p>'
+                    "</td></tr></table>"
+                )
+                await send_email(to=b["email"], subject=subject, html=html)
+                email_sent += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Booking reminder email failed for %s: %s", b.get("id"), exc)
+
+        await db.bookings.update_one({"id": b["id"]}, {"$set": {"reminded_at": now}})
+
+    return {"checked": len(bookings), "chat_sent": chat_sent, "email_sent": email_sent}
+
+
+@router.post("/studio/booking/run-reminders")
+async def trigger_reminders(user: dict = Depends(get_current_user)):
+    """Manual sweep for a coach's own bookings — handy for QA; production runs
+    this automatically every 15 minutes from the app lifespan task."""
+    coach_id = await require_module(user, "coaching")
+    require_coach(user)
+    return await run_reminder_sweep(coach_id=coach_id)
+

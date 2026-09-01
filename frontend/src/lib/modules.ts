@@ -94,6 +94,7 @@ export type Lesson = {
   attachments: string[];
   attachment_files?: { id: string; title: string; kind: string; url: string }[];
   release: { type: "immediate" | "day_offset" | "date"; day_offset: number; date: string | null };
+  chapters: { title: string; timestamp_seconds: number }[];
   unlocked?: boolean;
   completed?: boolean;
   course_title?: string;

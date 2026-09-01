@@ -21,11 +21,13 @@ type Props = {
   /** Stable key used to remember the watch position. */
   progressKey: string;
   poster?: string | null;
+  /** Optional tappable chapter markers to jump straight to a part of the lesson. */
+  chapters?: { title: string; timestamp_seconds: number }[];
 };
 
 /** Cinematic in-app lesson player: native controls + fullscreen, speed control
  *  and resume-where-you-left-off. */
-export default function LessonVideo({ uri, progressKey, poster }: Props) {
+export default function LessonVideo({ uri, progressKey, poster, chapters }: Props) {
   const [speed, setSpeed] = useState(1);
   const [resumedAt, setResumedAt] = useState<number | null>(null);
   const restored = useRef(false);
@@ -72,6 +74,17 @@ export default function LessonVideo({ uri, progressKey, poster }: Props) {
     setSpeed(s);
     player.playbackRate = s;
   };
+
+  const jumpTo = (seconds: number) => {
+    player.currentTime = seconds;
+    setResumedAt(null);
+  };
+
+  const sortedChapters = [...(chapters ?? [])].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds);
+  const activeChapterIndex = sortedChapters.reduce(
+    (acc, ch, i) => (currentTime >= ch.timestamp_seconds ? i : acc),
+    -1,
+  );
 
   const failed = status === "error";
 
@@ -134,6 +147,34 @@ export default function LessonVideo({ uri, progressKey, poster }: Props) {
           <Text style={styles.resumeText}>Resumed at {fmt(resumedAt)} — start over</Text>
         </Pressable>
       ) : null}
+
+      {sortedChapters.length > 0 ? (
+        <View style={styles.chapters}>
+          {sortedChapters.map((ch, i) => (
+            <Pressable
+              key={`${ch.title}-${ch.timestamp_seconds}`}
+              testID={`chapter-${i}`}
+              onPress={() => jumpTo(ch.timestamp_seconds)}
+              style={[styles.chapterChip, i === activeChapterIndex && styles.chapterChipOn]}
+            >
+              <Ionicons
+                name="play"
+                size={10}
+                color={i === activeChapterIndex ? colors.onBrand : colors.brand}
+              />
+              <Text style={[styles.chapterTime, i === activeChapterIndex && styles.chapterTextOn]}>
+                {fmt(ch.timestamp_seconds)}
+              </Text>
+              <Text
+                style={[styles.chapterTitle, i === activeChapterIndex && styles.chapterTextOn]}
+                numberOfLines={1}
+              >
+                {ch.title}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -176,4 +217,25 @@ const styles = StyleSheet.create({
   speedTextOn: { color: colors.brand },
   resume: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   resumeText: { fontFamily: fonts.medium, fontSize: 11.5, color: colors.brand },
+  chapters: { gap: spacing.xs, marginTop: spacing.xs },
+  chapterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  chapterChipOn: { backgroundColor: colors.brand, borderColor: colors.brand },
+  chapterTime: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    color: colors.brand,
+    minWidth: 34,
+  },
+  chapterTitle: { flex: 1, fontFamily: fonts.medium, fontSize: 12.5, color: colors.onSurface },
+  chapterTextOn: { color: colors.onBrand },
 });

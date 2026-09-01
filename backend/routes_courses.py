@@ -271,6 +271,11 @@ class ReleaseBody(BaseModel):
     date: datetime | None = None
 
 
+class ChapterBody(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+    timestamp_seconds: int = Field(ge=0, le=36000)
+
+
 class LessonBody(BaseModel):
     title: str = Field(min_length=1, max_length=140)
     summary: str = Field(default="", max_length=500)
@@ -282,6 +287,7 @@ class LessonBody(BaseModel):
     order: int = Field(default=0, ge=0, le=999)
     attachments: list[str] = Field(default_factory=list)
     release: ReleaseBody = Field(default_factory=ReleaseBody)
+    chapters: list[ChapterBody] = Field(default_factory=list)
 
 
 def _lesson_public(l: dict, is_coach: bool) -> dict:
@@ -298,6 +304,7 @@ def _lesson_public(l: dict, is_coach: bool) -> dict:
         "order": l.get("order", 0),
         "attachments": l.get("attachments") or [],
         "release": l.get("release") or {"type": "immediate", "day_offset": 0, "date": None},
+        "chapters": sorted(l.get("chapters") or [], key=lambda c: c.get("timestamp_seconds", 0)),
     }
     if out["release"].get("date"):
         out["release"] = {**out["release"], "date": _iso(out["release"]["date"])}
@@ -341,9 +348,10 @@ async def create_lesson(course_id: str, body: LessonBody, user: dict = Depends(g
         "id": f"les_{uuid.uuid4().hex[:12]}",
         "coach_id": coach_id,
         "course_id": course_id,
-        **body.model_dump(exclude={"attachments", "release"}),
+        **body.model_dump(exclude={"attachments", "release", "chapters"}),
         "attachments": await _valid_attachments(body.attachments, coach_id),
         "release": body.release.model_dump(),
+        "chapters": [c.model_dump() for c in body.chapters[:40]],
         "order": body.order or count,
         "created_at": datetime.now(timezone.utc),
     }
@@ -391,9 +399,10 @@ async def update_lesson(lesson_id: str, body: LessonBody, user: dict = Depends(g
     require_coach(user)
     await owned(db.lessons, lesson_id, coach_id, "Lesson")
     update = {
-        **body.model_dump(exclude={"attachments", "release"}),
+        **body.model_dump(exclude={"attachments", "release", "chapters"}),
         "attachments": await _valid_attachments(body.attachments, coach_id),
         "release": body.release.model_dump(),
+        "chapters": [c.model_dump() for c in body.chapters[:40]],
     }
     await db.lessons.update_one({"id": lesson_id}, {"$set": update})
     return _lesson_public(await db.lessons.find_one({"id": lesson_id}, {"_id": 0}), True)

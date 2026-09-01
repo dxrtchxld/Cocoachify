@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { ScrollView, Share, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
@@ -51,6 +51,7 @@ type Booking = {
   duration_minutes: number;
   starts_at: string;
   status: string;
+  client_id: string | null;
 };
 
 export default function StudioBooking() {
@@ -398,9 +399,24 @@ export default function StudioBooking() {
                     <Text style={styles.meta}>
                       {b.session_type_name} · {new Date(b.starts_at).toLocaleString()}
                     </Text>
-                    <TouchableOpacity testID={`cancel-${b.id}`} onPress={() => decide(b, "cancel")}>
-                      <Text style={styles.remove}>Cancel</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: spacing.xl }}>
+                      <TouchableOpacity testID={`cancel-${b.id}`} onPress={() => decide(b, "cancel")}>
+                        <Text style={styles.remove}>Cancel</Text>
+                      </TouchableOpacity>
+                      {b.client_id ? (
+                        <TouchableOpacity
+                          testID={`prep-session-${b.id}`}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/studio/assistant",
+                              params: { clientId: b.client_id as string, kind: "agenda" },
+                            })
+                          }
+                        >
+                          <Text style={styles.action}>✨ Prep with AI</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </Card>
                 ))}
               </View>

@@ -79,6 +79,7 @@ export default function ClientScreen() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [aiConsent, setAiConsent] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -87,6 +88,12 @@ export default function ClientScreen() {
       setClient(null);
     } finally {
       setLoading(false);
+    }
+    try {
+      const consents = await api<{ client_id: string; granted: boolean }[]>("/studio/assistant/consent");
+      setAiConsent(consents.some((c) => c.client_id === id && c.granted));
+    } catch {
+      setAiConsent(false);
     }
   }, [id]);
 
@@ -182,6 +189,20 @@ export default function ClientScreen() {
           >
             <Ionicons name="chatbubble-ellipses" size={20} color={colors.brand} />
           </TouchableOpacity>
+          {aiConsent ? (
+            <TouchableOpacity
+              testID="prep-with-ai-btn"
+              style={styles.msgBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/studio/assistant",
+                  params: { clientId: client.user_id, kind: "agenda" },
+                })
+              }
+            >
+              <Ionicons name="sparkles" size={20} color={colors.brand} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Progress snapshot */}

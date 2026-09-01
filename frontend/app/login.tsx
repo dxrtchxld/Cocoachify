@@ -24,6 +24,7 @@ export default function Login() {
   const { user, loginWithGoogle, login, register } = useAuth();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -100,79 +101,92 @@ export default function Login() {
               <ActivityIndicator color="#121214" />
             ) : (
               <>
-                <Ionicons name="logo-google" size={20} color="#121214" />
+                <Ionicons name="logo-google" size={22} color="#121214" />
                 <Text style={styles.googleText}>Continue with Google</Text>
               </>
             )}
           </TouchableOpacity>
+          <Text style={styles.googleHint}>Fast, secure sign-in — no password to remember</Text>
 
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or with email</Text>
-            <View style={styles.divider} />
-          </View>
+          {!showEmail ? (
+            <TouchableOpacity
+              testID="show-email-signin"
+              onPress={() => setShowEmail(true)}
+              style={styles.emailLink}
+            >
+              <Text style={styles.emailLinkText}>Sign in with email instead</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>or with email</Text>
+                <View style={styles.divider} />
+              </View>
 
-          {mode === "signup" && (
-            <View style={styles.field}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                testID="name-input"
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Your name"
-                placeholderTextColor={colors.onSurfaceSecondary}
-                autoCapitalize="words"
+              {mode === "signup" && (
+                <View style={styles.field}>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    testID="name-input"
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Your name"
+                    placeholderTextColor={colors.onSurfaceSecondary}
+                    autoCapitalize="words"
+                  />
+                </View>
+              )}
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  testID="email-input"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.onSurfaceSecondary}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  testID="password-input"
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Min. 8 characters"
+                  placeholderTextColor={colors.onSurfaceSecondary}
+                  secureTextEntry
+                />
+              </View>
+
+              <Button
+                testID="submit-auth-btn"
+                title={mode === "signin" ? "Sign In" : "Create Account"}
+                onPress={handleSubmit}
+                loading={busy}
+                style={{ marginTop: spacing.md }}
               />
-            </View>
+
+              <TouchableOpacity
+                testID="toggle-auth-mode"
+                onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+                style={styles.toggle}
+              >
+                <Text style={styles.toggleText}>
+                  {mode === "signin" ? "New here? " : "Already have an account? "}
+                  <Text style={styles.toggleAccent}>
+                    {mode === "signin" ? "Create an account" : "Sign in"}
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              testID="email-input"
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.onSurfaceSecondary}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              testID="password-input"
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Min. 8 characters"
-              placeholderTextColor={colors.onSurfaceSecondary}
-              secureTextEntry
-            />
-          </View>
-
-          <Button
-            testID="submit-auth-btn"
-            title={mode === "signin" ? "Sign In" : "Create Account"}
-            onPress={handleSubmit}
-            loading={busy}
-            style={{ marginTop: spacing.md }}
-          />
-
-          <TouchableOpacity
-            testID="toggle-auth-mode"
-            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
-            style={styles.toggle}
-          >
-            <Text style={styles.toggleText}>
-              {mode === "signin" ? "New here? " : "Already have an account? "}
-              <Text style={styles.toggleAccent}>
-                {mode === "signin" ? "Create an account" : "Sign in"}
-              </Text>
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -198,7 +212,7 @@ const styles = StyleSheet.create({
   },
   form: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl },
   googleBtn: {
-    minHeight: 52,
+    minHeight: 58,
     backgroundColor: "#F4F4F5",
     borderRadius: radius.md,
     flexDirection: "row",
@@ -206,7 +220,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
   },
-  googleText: { fontFamily: fonts.bold, fontSize: 15, color: "#121214" },
+  googleText: { fontFamily: fonts.bold, fontSize: 16, color: "#121214" },
+  googleHint: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.onSurfaceSecondary,
+    textAlign: "center",
+    marginTop: spacing.sm,
+  },
+  emailLink: { alignItems: "center", marginTop: spacing.xl, minHeight: 44, justifyContent: "center" },
+  emailLinkText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13.5,
+    color: colors.brand,
+    textDecorationLine: "underline",
+  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -112,7 +112,7 @@ export default function PortalLesson() {
         {lesson.summary ? <Text style={styles.summary}>{lesson.summary}</Text> : null}
 
         {videoUri ? (
-          <LessonVideo uri={videoUri} progressKey={lesson.id} />
+          <LessonVideo uri={videoUri} progressKey={lesson.id} chapters={lesson.chapters} />
         ) : lesson.video_file_id && !videoError ? (
           <View style={styles.video}>
             <ActivityIndicator color={colors.brand} />

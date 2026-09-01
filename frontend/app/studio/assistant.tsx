@@ -1,6 +1,6 @@
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import Button from "@/src/components/Button";
 import {
@@ -29,6 +29,15 @@ type Draft = {
   status: string;
   created_at: string;
 };
+type CheckinLog = {
+  id: string;
+  log_type: string;
+  session_name: string | null;
+  duration_minutes: number | null;
+  rpe: number | null;
+  notes: string | null;
+  date: string;
+};
 
 const KINDS: { key: string; label: string }[] = [
   { key: "agenda", label: "Session agenda" },
@@ -37,6 +46,7 @@ const KINDS: { key: string; label: string }[] = [
 ];
 
 export default function AssistantScreen() {
+  const params = useLocalSearchParams<{ clientId?: string; kind?: string }>();
   const [clients, setClients] = useState<Client[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -49,6 +59,9 @@ export default function AssistantScreen() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [preview, setPreview] = useState<CheckinLog[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const handledParam = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -74,6 +87,37 @@ export default function AssistantScreen() {
   );
 
   const hasConsent = (id: string) => consents.some((c) => c.client_id === id && c.granted);
+
+  const loadPreview = async (clientId: string) => {
+    setPreviewLoading(true);
+    try {
+      const detail = await api<{ logs: CheckinLog[] }>(`/coach/clients/${clientId}`);
+      setPreview((detail.logs ?? []).slice(0, 3));
+    } catch {
+      setPreview([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Deep-link entry: coming from "Prep with AI" on a client or booking screen.
+  useEffect(() => {
+    if (loading || !params.clientId) return;
+    if (handledParam.current === params.clientId) return;
+    handledParam.current = params.clientId;
+    const target = clients.find((c) => c.user_id === params.clientId);
+    if (!target) return;
+    if (hasConsent(target.user_id)) {
+      setClient(target);
+      setKind(KINDS.some((k) => k.key === params.kind) ? (params.kind as string) : "agenda");
+      setModel(models.find((m) => m.default)?.id ?? "claude-sonnet-4-6");
+      setOpen(true);
+      loadPreview(target.user_id);
+    } else {
+      setError(`${target.name} hasn't turned on assistant consent yet.`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, params.clientId, clients, consents, models]);
 
   const generate = async () => {
     if (!client) return;
@@ -137,8 +181,11 @@ export default function AssistantScreen() {
             title="Draft something"
             style={{ marginTop: spacing.lg }}
             onPress={() => {
-              setClient(consented[0] ?? null);
+              const first = consented[0] ?? null;
+              setClient(first);
               setModel(models.find((m) => m.default)?.id ?? "claude-sonnet-4-6");
+              setPreview([]);
+              if (first) loadPreview(first.user_id);
               setOpen(true);
             }}
           />
@@ -192,7 +239,11 @@ export default function AssistantScreen() {
               key={c.user_id}
               testID={`pick-client-${c.user_id}`}
               style={[styles.pick, client?.user_id === c.user_id && styles.pickActive]}
-              onPress={() => setClient(c)}
+              onPress={() => {
+                setClient(c);
+                setPreview([]);
+                loadPreview(c.user_id);
+              }}
             >
               <Text style={[styles.pickText, client?.user_id === c.user_id && { color: colors.brand }]}>
                 {c.name}
@@ -200,6 +251,34 @@ export default function AssistantScreen() {
             </TouchableOpacity>
           ))
         )}
+
+        {client ? (
+          <>
+            <SectionTitle>RECENT CHECK-INS (USED FOR THE DRAFT)</SectionTitle>
+            {previewLoading ? (
+              <ActivityIndicator color={colors.brand} style={{ marginVertical: spacing.sm }} />
+            ) : preview.length === 0 ? (
+              <Text style={styles.meta}>No recent check-ins yet — the draft will lean on intake data.</Text>
+            ) : (
+              <View style={{ gap: spacing.xs }}>
+                {preview.map((l) => (
+                  <Card key={l.id} testID={`preview-log-${l.id}`} style={{ gap: 2 }}>
+                    <Text style={styles.previewTitle}>
+                      {l.log_type === "body" ? "Body log" : l.session_name ?? "Workout"} ·{" "}
+                      {new Date(l.date).toLocaleDateString()}
+                    </Text>
+                    {l.notes ? (
+                      <Text style={styles.previewNotes} numberOfLines={2}>
+                        &ldquo;{l.notes}&rdquo;
+                      </Text>
+                    ) : null}
+                  </Card>
+                ))}
+              </View>
+            )}
+          </>
+        ) : null}
+
         <SectionTitle>WHAT TO DRAFT</SectionTitle>
         {KINDS.map((k) => (
           <TouchableOpacity
@@ -255,4 +334,6 @@ const styles = StyleSheet.create({
   },
   pickActive: { borderColor: colors.brand, backgroundColor: colors.brandTertiary },
   pickText: { fontFamily: fonts.semiBold, fontSize: 13.5, color: colors.onSurface },
+  previewTitle: { fontFamily: fonts.semiBold, fontSize: 12.5, color: colors.onSurface },
+  previewNotes: { fontFamily: fonts.regular, fontSize: 12, fontStyle: "italic", color: colors.onSurfaceTertiary },
 });

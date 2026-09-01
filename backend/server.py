@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,21 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+async def _booking_reminder_loop():
+    """Runs forever in the background: sweeps for day-before booking reminders
+    every 15 minutes. A single process is enough for this app's scale."""
+    from routes_booking import run_reminder_sweep
+
+    while True:
+        try:
+            result = await run_reminder_sweep()
+            if result.get("checked"):
+                logger.info("Booking reminder sweep: %s", result)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Booking reminder sweep failed: %s", exc)
+        await asyncio.sleep(15 * 60)
 
 
 @asynccontextmanager
@@ -51,8 +67,10 @@ async def lifespan(app: FastAPI):
         logger.info("Object storage initialised")
     except Exception as exc:  # noqa: BLE001
         logger.warning("Object storage init failed (uploads may retry): %s", exc)
+    reminder_task = asyncio.create_task(_booking_reminder_loop())
     logger.info("Startup complete: indexes ensured")
     yield
+    reminder_task.cancel()
     client.close()
 
 

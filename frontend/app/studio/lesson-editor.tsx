@@ -11,6 +11,24 @@ import { Lesson, Section } from "@/src/lib/modules";
 import { colors, fonts, spacing } from "@/src/theme";
 
 type LibraryFile = { id: string; title: string; kind: string };
+type Chapter = { title: string; timestamp_seconds: number };
+
+function parseTimecode(input: string): number | null {
+  const parts = input.trim().split(":");
+  if (parts.some((p) => p === "" || Number.isNaN(Number(p)))) return null;
+  if (parts.length === 1) return Math.max(0, parseInt(parts[0], 10));
+  if (parts.length === 2) return Math.max(0, parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10));
+  if (parts.length === 3) {
+    return Math.max(0, parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10));
+  }
+  return null;
+}
+
+function formatTimecode(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
 
 export default function LessonEditor() {
   const { courseId, lessonId } = useLocalSearchParams<{ courseId: string; lessonId?: string }>();
@@ -32,6 +50,10 @@ export default function LessonEditor() {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [pickOpen, setPickOpen] = useState(false);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chapTitle, setChapTitle] = useState("");
+  const [chapTime, setChapTime] = useState("");
+  const [chapError, setChapError] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -51,6 +73,7 @@ export default function LessonEditor() {
         setReleaseType(l.release.type);
         setDayOffset(String(l.release.day_offset || 7));
         setReleaseDate(l.release.date ? l.release.date.slice(0, 10) : "");
+        setChapters(l.chapters ?? []);
       } else if (course.sections.length) {
         setSectionId(course.sections[0].id);
       }
@@ -92,6 +115,30 @@ export default function LessonEditor() {
     }
   };
 
+  const addChapter = () => {
+    setChapError("");
+    if (!chapTitle.trim()) {
+      setChapError("Give the chapter a title");
+      return;
+    }
+    const seconds = parseTimecode(chapTime);
+    if (seconds === null) {
+      setChapError("Use mm:ss, e.g. 2:30");
+      return;
+    }
+    setChapters((prev) =>
+      [...prev, { title: chapTitle.trim(), timestamp_seconds: seconds }].sort(
+        (a, b) => a.timestamp_seconds - b.timestamp_seconds,
+      ),
+    );
+    setChapTitle("");
+    setChapTime("");
+  };
+
+  const removeChapter = (index: number) => {
+    setChapters((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const save = async () => {
     if (!title.trim()) {
       setError("Give the lesson a title");
@@ -114,6 +161,7 @@ export default function LessonEditor() {
         day_offset: releaseType === "day_offset" ? parseInt(dayOffset, 10) || 0 : 0,
         date: releaseType === "date" && releaseDate ? new Date(releaseDate).toISOString() : null,
       },
+      chapters,
     };
     try {
       if (lessonId) {
@@ -182,6 +230,39 @@ export default function LessonEditor() {
 
         <Field label="OR PASTE A VIDEO LINK" value={videoUrl} onChangeText={setVideoUrl} placeholder="https://…" testID="lesson-video-input" />
         <Field label="LENGTH (MINUTES)" value={duration} onChangeText={setDuration} placeholder="12" keyboardType="numeric" testID="lesson-duration-input" />
+
+        <SectionTitle>CHAPTERS</SectionTitle>
+        {chapters.length === 0 ? (
+          <Card>
+            <Text style={styles.hint}>
+              Add markers so clients can jump straight to a part of the video — e.g. &ldquo;Warm-up&rdquo; at 0:00,
+              &ldquo;Main set&rdquo; at 3:15.
+            </Text>
+          </Card>
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            {chapters.map((c, i) => (
+              <Row
+                key={`${c.title}-${c.timestamp_seconds}-${i}`}
+                testID={`chapter-row-${i}`}
+                icon="bookmark"
+                title={c.title}
+                subtitle={formatTimecode(c.timestamp_seconds)}
+                right={
+                  <TouchableOpacity testID={`remove-chapter-${i}`} onPress={() => removeChapter(i)}>
+                    <Text style={styles.remove}>Remove</Text>
+                  </TouchableOpacity>
+                }
+              />
+            ))}
+          </View>
+        )}
+        <Card style={{ gap: spacing.sm }}>
+          <Field label="CHAPTER TITLE" value={chapTitle} onChangeText={setChapTitle} placeholder="Main set" testID="chapter-title-input" />
+          <Field label="TIMESTAMP (MM:SS)" value={chapTime} onChangeText={setChapTime} placeholder="3:15" testID="chapter-time-input" />
+          {chapError ? <Text style={styles.error}>{chapError}</Text> : null}
+          <Button testID="add-chapter-btn" title="Add chapter" variant="secondary" onPress={addChapter} />
+        </Card>
 
         {sections.length > 0 ? (
           <>

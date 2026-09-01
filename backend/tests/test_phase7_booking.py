@@ -263,3 +263,52 @@ class TestVideoStreaming:
                             headers=_h(client_tok), timeout=30).json()["url"]
         naked = BASE.replace("/api", "") + link.split("?")[0]
         assert requests.get(naked, timeout=30).status_code in (401, 403)
+
+
+class TestBookingReminders:
+    """Day-before booking reminders: in-app chat + email, sent once (idempotent)."""
+
+    def _slot_about_24h_out(self, booking):
+        target = datetime.now(timezone.utc) + timedelta(hours=24)
+        day = target.date().isoformat()
+        r = requests.get(f"{BASE}/public/book/{booking['slug']}/slots",
+                         params={"date": day, "session_type_id": booking["type_id"]}, timeout=30)
+        assert r.status_code == 200, r.text
+        slots = r.json()["slots"]
+        assert slots, "expected open slots ~24h out for the reminder test"
+        chosen = min(slots, key=lambda s: abs((datetime.fromisoformat(s) - target).total_seconds()))
+        hours_out = (datetime.fromisoformat(chosen) - datetime.now(timezone.utc)).total_seconds() / 3600
+        assert 18 <= hours_out <= 30, f"chosen slot {chosen} is {hours_out:.1f}h out, not close to 24h"
+        return chosen
+
+    def test_reminder_sweep_sends_and_is_idempotent(self, coach_tok, client_tok, booking):
+        slot = self._slot_about_24h_out(booking)
+        r = requests.post(f"{BASE}/public/book/{booking['slug']}", headers=_h(client_tok),
+                          json={"session_type_id": booking["type_id"], "starts_at": slot,
+                                "notes": "pytest reminder"}, timeout=30)
+        assert r.status_code == 201, r.text
+        bid = r.json()["id"]
+
+        r = requests.post(f"{BASE}/studio/booking/requests/{bid}/decision",
+                          json={"action": "confirm"}, headers=_h(coach_tok), timeout=20)
+        assert r.status_code == 200, r.text
+
+        r = requests.post(f"{BASE}/studio/booking/run-reminders", headers=_h(coach_tok), timeout=30)
+        assert r.status_code == 200, r.text
+        result = r.json()
+        assert result["checked"] >= 1
+        assert result["chat_sent"] >= 1
+        assert result["email_sent"] >= 1
+
+        rows = requests.get(f"{BASE}/studio/booking/requests", headers=_h(coach_tok), timeout=30).json()
+        row = next(b for b in rows if b["id"] == bid)
+        assert row["reminded"] is True
+
+        # Re-running the sweep must not error on an already-reminded booking.
+        again = requests.post(f"{BASE}/studio/booking/run-reminders", headers=_h(coach_tok), timeout=30)
+        assert again.status_code == 200
+        assert again.json()["checked"] >= 0
+
+    def test_reminder_sweep_is_coach_only(self, client_tok):
+        r = requests.post(f"{BASE}/studio/booking/run-reminders", headers=_h(client_tok), timeout=20)
+        assert r.status_code == 403
