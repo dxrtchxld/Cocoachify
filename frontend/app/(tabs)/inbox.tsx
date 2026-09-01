@@ -139,7 +139,7 @@ export default function Inbox() {
         <FlatList
           data={filtered}
           keyExtractor={(i) => i.id}
-          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+          contentContainerStyle={{ paddingBottom: spacing.xxxl + spacing.xl }}
           renderItem={({ item }) => (
             <View style={[styles.card, !item.reviewed && styles.cardNew]}>
               <View style={styles.cardTop}>

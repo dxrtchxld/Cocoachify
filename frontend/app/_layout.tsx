@@ -70,6 +70,7 @@ function ThemedApp() {
         <Stack.Screen name="paywall" options={{ presentation: "modal" }} />
         <Stack.Screen name="role-select" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="welcome" />
         <Stack.Screen name="invite" />
       </Stack>
     </View>

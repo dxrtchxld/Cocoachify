@@ -34,6 +34,7 @@ export type User = {
     notes: string | null;
   } | null;
   onboarding_completed: boolean;
+  welcomed?: boolean;
 };
 
 type AuthContextType = {

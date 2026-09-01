@@ -21,6 +21,9 @@ export default function Index() {
   if (user.role === "client" && !user.onboarding_completed) {
     return <Redirect href="/onboarding" />;
   }
+  if (user.role === "client" && user.coach_id && !user.welcomed) {
+    return <Redirect href="/welcome" />;
+  }
   return <Redirect href="/(tabs)" />;
 }
 

@@ -100,7 +100,7 @@ export default function Progress() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxxl + spacing.xl }}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>PROGRESS</Text>

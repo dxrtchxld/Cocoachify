@@ -115,7 +115,7 @@ export default function ClientToday() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxxl + spacing.xl }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -299,6 +299,15 @@ export default function ClientToday() {
         {/* Quick action */}
         <View style={styles.quickRow}>
           <TouchableOpacity
+            testID="quick-journey"
+            style={styles.quickCard}
+            onPress={() => router.push("/portal")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="compass" size={22} color={colors.brand} />
+            <Text style={styles.quickText}>My Journey</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.quickCard}
             onPress={() => router.push("/(tabs)/progress")}
             activeOpacity={0.8}
@@ -471,12 +480,14 @@ const styles = StyleSheet.create({
   noteText: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.onSurfaceTertiary, lineHeight: 19 },
   quickRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md,
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
   },
   quickCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "45%",
     backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
     borderColor: colors.border,
@@ -529,10 +540,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: radius.pill,
     elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: "0px 4px 8px rgba(0,0,0,0.4)",
   },
   fabText: { fontFamily: fonts.bold, fontSize: 14 },
 });

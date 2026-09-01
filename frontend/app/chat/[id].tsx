@@ -14,9 +14,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import MessageBubble, { DateSeparator } from "@/src/components/chat/MessageBubble";
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
 import { colors, fonts, radius, spacing } from "@/src/theme";
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86400000);
+  if (d.toDateString() === today.toDateString()) return "TODAY";
+  if (d.toDateString() === yesterday.toDateString()) return "YESTERDAY";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
+}
 
 type Message = {
   id: string;
@@ -79,10 +89,33 @@ export default function ChatScreen() {
     }
   };
 
+  const feedItems = React.useMemo(() => {
+    const out: {
+      key: string;
+      type: "date" | "msg";
+      label?: string;
+      message?: Message;
+      mine?: boolean;
+      showTail?: boolean;
+    }[] = [];
+    let lastDay = "";
+    messages.forEach((m, i) => {
+      const day = new Date(m.created_at).toDateString();
+      if (day !== lastDay) {
+        out.push({ key: `date-${day}`, type: "date", label: dayLabel(m.created_at) });
+        lastDay = day;
+      }
+      const next = messages[i + 1];
+      const showTail =
+        !next || next.sender_id !== m.sender_id || new Date(next.created_at).toDateString() !== day;
+      out.push({ key: m.id, type: "msg", message: m, mine: m.sender_id === user?.user_id, showTail });
+    });
+    return out.reverse();
+  }, [messages, user?.user_id]);
+
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>        <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={styles.avatar}>
@@ -98,10 +131,10 @@ export default function ChatScreen() {
           </View>
         ) : (
           <FlatList
-            data={[...messages].reverse()}
+            data={feedItems}
             inverted
-            keyExtractor={(m) => m.id}
-            contentContainerStyle={{ padding: spacing.xl, gap: spacing.sm }}
+            keyExtractor={(it) => it.key}
+            contentContainerStyle={{ padding: spacing.xl, gap: 4 }}
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyText}>
@@ -109,24 +142,19 @@ export default function ChatScreen() {
                 </Text>
               </View>
             }
-            renderItem={({ item }) => {
-              const mine = item.sender_id === user?.user_id;
-              return (
-                <View
-                  style={[
-                    styles.bubble,
-                    mine
-                      ? { alignSelf: "flex-end", backgroundColor: colors.brand }
-                      : { alignSelf: "flex-start", backgroundColor: colors.surfaceTertiary },
-                  ]}
-                >
-                  <Text style={[styles.bubbleText, mine && { color: colors.onBrand }]}>{item.text}</Text>
-                  <Text style={[styles.bubbleTime, mine && { color: colors.onBrand, opacity: 0.7 }]}>
-                    {new Date(item.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                  </Text>
-                </View>
-              );
-            }}
+            renderItem={({ item }) =>
+              item.type === "date" ? (
+                <DateSeparator label={item.label!} />
+              ) : (
+                <MessageBubble
+                  message={item.message!}
+                  mine={item.mine!}
+                  showTail={item.showTail!}
+                  peerInitial={(peerName || "?")[0]?.toUpperCase() ?? "?"}
+                  peerIsCoach={user?.role === "client"}
+                />
+              )
+            }
           />
         )}
 
@@ -179,14 +207,6 @@ const styles = StyleSheet.create({
   peerName: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.onSurface },
   emptyWrap: { padding: spacing.xl, transform: [{ scaleY: -1 }] },
   emptyText: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurfaceSecondary, textAlign: "center" },
-  bubble: {
-    maxWidth: "80%",
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  bubbleText: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 20, color: colors.onSurface },
-  bubbleTime: { fontFamily: fonts.regular, fontSize: 10, color: colors.onSurfaceSecondary, marginTop: 3, alignSelf: "flex-end" },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",

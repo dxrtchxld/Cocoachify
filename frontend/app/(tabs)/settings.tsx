@@ -95,7 +95,7 @@ export default function Settings() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxxl + spacing.xl }}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>SETTINGS</Text>
@@ -206,6 +206,32 @@ export default function Settings() {
               <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="workspace-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/studio")}
+            >
+              <Ionicons name="grid" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Coach workspace</Text>
+                <Text style={styles.rowSub}>Courses, plans, community, leads & memberships</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="modules-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/studio/modules")}
+            >
+              <Ionicons name="toggle" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Platform modules</Text>
+                <Text style={styles.rowSub}>Turn each new feature on or off</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
               testID="brand-studio-row"
               style={styles.row}
               activeOpacity={0.7}
@@ -242,6 +268,19 @@ export default function Settings() {
         ) : (
           <>
             <Text style={styles.sectionTitle}>YOUR COACH</Text>
+            <TouchableOpacity
+              testID="my-journey-row"
+              style={styles.row}
+              activeOpacity={0.7}
+              onPress={() => router.push("/portal")}
+            >
+              <Ionicons name="compass" size={20} color={colors.brand} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>My journey</Text>
+                <Text style={styles.rowSub}>Courses, goals, assignments & check-ins</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+            </TouchableOpacity>
             {coach ? (
               <View style={styles.row}>
                 <Ionicons name="person-circle" size={22} color={colors.success} />
@@ -507,11 +546,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.lg,
   },
-  swatchRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.md },
+  swatchRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    marginTop: spacing.md,
+    justifyContent: "flex-start",
+  },
   swatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
   },

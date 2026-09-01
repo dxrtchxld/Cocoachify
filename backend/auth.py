@@ -55,6 +55,7 @@ def user_public(user: dict) -> dict:
         "coach_id": user.get("coach_id"),
         "onboarding": user.get("onboarding"),
         "onboarding_completed": user.get("onboarding_completed", False),
+        "welcomed": user.get("welcomed", False),
     }
 
 

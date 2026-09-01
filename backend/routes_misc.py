@@ -338,3 +338,9 @@ async def my_coach(user: dict = Depends(get_current_user)):
         return {"coach": None}
     coach = await db.users.find_one({"user_id": user["coach_id"]}, {"_id": 0})
     return {"coach": user_public(coach) if coach else None}
+
+@router.post("/me/welcomed")
+async def mark_welcomed(user: dict = Depends(get_current_user)):
+    """One-time branded welcome has been seen."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"welcomed": True}})
+    return {"ok": True}

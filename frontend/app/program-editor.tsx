@@ -1,14 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
-  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -21,9 +18,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
+import CoverPicker from "@/src/components/CoverPicker";
 import Scrim from "@/src/components/Scrim";
 import { useAuth } from "@/src/context/AuthContext";
-import { api, uploadImage } from "@/src/lib/api";
+import { api } from "@/src/lib/api";
 import { categoryMeta, colors, coverFor, fonts, radius, sessionTypeIcon, spacing } from "@/src/theme";
 
 type SessionSummary = { id: string; name: string; session_type: string; target_minutes: number; exercise_count: number };
@@ -41,7 +39,8 @@ export default function ProgramEditor() {
   const [description, setDescription] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [coverUploading, setCoverUploading] = useState(false);
+  const coverUploading = false;
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const { user } = useAuth();
   const [category, setCategory] = useState(user?.coach_specialty ?? "fitness");
   const [difficulty, setDifficulty] = useState("beginner");
@@ -101,41 +100,6 @@ export default function ProgramEditor() {
 
   const sessionById = (sid: string | null) => sessions.find((s) => s.id === sid);
 
-  const pickCover = async () => {
-    const perm = await ImagePicker.getMediaLibraryPermissionsAsync();
-    let status = perm.status;
-    if (status !== "granted" && perm.canAskAgain) {
-      status = (await ImagePicker.requestMediaLibraryPermissionsAsync()).status;
-    }
-    if (status !== "granted") {
-      Alert.alert(
-        "Photo access needed",
-        "Allow photo access to set a cover photo.",
-        Platform.OS === "web"
-          ? [{ text: "OK" }]
-          : [
-              { text: "Cancel", style: "cancel" },
-              { text: "Open Settings", onPress: () => Linking.openSettings() },
-            ],
-      );
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.85,
-      allowsEditing: true,
-      aspect: [16, 10],
-    });
-    if (res.canceled || !res.assets?.length) return;
-    setCoverUploading(true);
-    try {
-      setCoverImage(await uploadImage(res.assets[0].uri));
-    } catch (e: any) {
-      Alert.alert("Upload failed", e?.message || "Please try again.");
-    } finally {
-      setCoverUploading(false);
-    }
-  };
 
   const save = async () => {
     setError(null);
@@ -215,7 +179,7 @@ export default function ProgramEditor() {
               testID="pick-cover-btn"
               style={styles.coverPicker}
               activeOpacity={0.85}
-              onPress={pickCover}
+              onPress={() => setCoverPickerOpen(true)}
               disabled={coverUploading}
             >
               <Image
@@ -482,6 +446,11 @@ export default function ProgramEditor() {
           </View>
         </View>
       </Modal>
+      <CoverPicker
+        visible={coverPickerOpen}
+        onClose={() => setCoverPickerOpen(false)}
+        onPick={(url) => setCoverImage(url)}
+      />
     </View>
   );
 }

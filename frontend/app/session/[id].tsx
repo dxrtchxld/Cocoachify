@@ -17,9 +17,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
+import ExerciseBlock from "@/src/components/player/ExerciseBlock";
+import PlayerHero from "@/src/components/player/PlayerHero";
 import { useAuth } from "@/src/context/AuthContext";
 import { api } from "@/src/lib/api";
-import { colors, fonts, radius, sessionTypeIcon, spacing } from "@/src/theme";
+import { colors, fonts, radius, spacing } from "@/src/theme";
 
 type SessionExercise = {
   name: string;
@@ -56,6 +58,7 @@ export default function SessionScreen() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [setsDone, setSetsDone] = useState<Record<number, number>>({});
 
   const isClient = user?.role === "client";
   const isOwner = user?.role === "coach" && session?.owner_id === user.user_id;
@@ -133,29 +136,36 @@ export default function SessionScreen() {
     }
   });
 
+  const totalExercises = session.exercises.length;
+  const doneCount = session.exercises.filter(
+    (ex, i) => (setsDone[i] ?? 0) >= Math.max(1, ex.sets ?? 1),
+  ).length;
+  const donePct = totalExercises ? Math.round((doneCount / totalExercises) * 100) : 0;
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + spacing.sm, paddingBottom: 140 }}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
-          </TouchableOpacity>
-          <View style={styles.typeBadge}>
-            <Ionicons
-              name={(sessionTypeIcon[session.session_type] as any) || "barbell"}
-              size={13}
-              color={colors.brand}
-            />
-            <Text style={styles.typeText}>{session.session_type.toUpperCase()}</Text>
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+        <PlayerHero
+          title={session.name}
+          sessionType={session.session_type}
+          minutes={session.target_minutes}
+          exerciseCount={totalExercises}
+          blockCount={groups.length}
+        />
 
-        <Text style={styles.title}>{session.name}</Text>
-        {session.target_minutes > 0 && (
-          <Text style={styles.subtitle}>
-            {session.target_minutes} min · {session.exercises.length} exercises
-          </Text>
-        )}
+        {isClient && totalExercises > 0 ? (
+          <View style={styles.progressCard}>
+            <View style={styles.progressTop}>
+              <Text style={styles.progressLabel}>TODAY’S WORK</Text>
+              <Text style={styles.progressCount}>
+                {doneCount}/{totalExercises}
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${donePct}%` }]} />
+            </View>
+          </View>
+        ) : null}
 
         {session.coach_notes ? (
           <View style={styles.noteCard}>
@@ -181,34 +191,23 @@ export default function SessionScreen() {
                 <Text style={styles.blockLabelText}>{group.label.toUpperCase()}</Text>
               </View>
             ) : session.exercises.length > 0 ? (
-              <Text style={styles.blockTitle}>EXERCISES</Text>
+              <Text style={styles.blockTitle}>THE WORK</Text>
             ) : null}
-            {group.items.map(({ ex }, ei) => (
-              <View key={ei} style={styles.exerciseCard}>
-                <View style={styles.exerciseIndex}>
-                  <Text style={styles.exerciseIndexText}>{ei + 1}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
-                  <Text style={styles.exerciseScheme}>
-                    {ex.sets ? `${ex.sets} × ` : ""}
-                    {ex.reps ? `${ex.reps} reps` : ex.duration_seconds ? formatSeconds(ex.duration_seconds) : ""}
-                    {ex.rest_seconds ? ` · rest ${ex.rest_seconds}s` : ""}
-                  </Text>
-                  {ex.form_note ? (
-                    <Text style={styles.exerciseNote}>
-                      <Text style={styles.exerciseNoteLabel}>Form: </Text>
-                      {ex.form_note}
-                    </Text>
-                  ) : null}
-                  {ex.purpose_note ? (
-                    <Text style={styles.exerciseNote}>
-                      <Text style={styles.exerciseNoteLabel}>Purpose: </Text>
-                      {ex.purpose_note}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
+            {group.items.map(({ ex, index }, ei) => (
+              <ExerciseBlock
+                key={index}
+                exercise={ex}
+                number={ei + 1}
+                setsDone={setsDone[index] ?? 0}
+                onSetTap={(next) => setSetsDone((prev) => ({ ...prev, [index]: next }))}
+                onToggleAll={() =>
+                  setSetsDone((prev) => {
+                    const total = Math.max(1, ex.sets ?? 1);
+                    const current = prev[index] ?? 0;
+                    return { ...prev, [index]: current >= total ? 0 : total };
+                  })
+                }
+              />
             ))}
           </View>
         ))}
@@ -230,7 +229,11 @@ export default function SessionScreen() {
         ) : isClient ? (
           <Button
             testID="complete-log-btn"
-            title="Complete & Check In"
+            title={
+              totalExercises && doneCount < totalExercises
+                ? `Complete & Check In · ${doneCount}/${totalExercises}`
+                : "Complete & Check In"
+            }
             onPress={() => setLogOpen(true)}
           />
         ) : isOwner ? (
@@ -307,48 +310,24 @@ export default function SessionScreen() {
   );
 }
 
-function formatSeconds(s: number): string {
-  if (s >= 60) return `${Math.round(s / 60)} min`;
-  return `${s}s`;
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-  },
-  backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  typeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  progressCard: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
     backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    marginRight: spacing.sm,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
-  typeText: { fontFamily: fonts.bold, fontSize: 10, color: colors.onSurfaceTertiary, letterSpacing: 1 },
-  title: {
-    fontFamily: fonts.displayBold,
-    fontSize: 28,
-    color: colors.onSurface,
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.sm,
-  },
-  subtitle: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    color: colors.onSurfaceSecondary,
-    paddingHorizontal: spacing.xl,
-    marginTop: 2,
-  },
+  progressTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  progressLabel: { fontFamily: fonts.bold, fontSize: 10.5, color: colors.onSurfaceSecondary, letterSpacing: 1.4 },
+  progressCount: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.brand },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceTertiary, overflow: "hidden" },
+  progressFill: { height: 6, borderRadius: 3, backgroundColor: colors.brand },
+  centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   noteCard: {
     backgroundColor: colors.brandTertiary,
     borderRadius: radius.md,
@@ -373,38 +352,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   blockLabelText: { fontFamily: fonts.bold, fontSize: 11, color: colors.brandSecondary, letterSpacing: 1.2 },
-  exerciseCard: {
-    flexDirection: "row",
-    gap: spacing.md,
-    backgroundColor: colors.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  exerciseIndex: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-  },
-  exerciseIndexText: { fontFamily: fonts.display, fontSize: 13, color: colors.brandSecondary },
-  exerciseName: { fontFamily: fonts.bold, fontSize: 16, color: colors.onSurface },
-  exerciseScheme: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.onSurfaceTertiary, marginTop: 3 },
-  exerciseNote: {
-    fontFamily: fonts.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
-    fontStyle: "italic",
-    color: colors.brandSecondary,
-    marginTop: 5,
-  },
-  exerciseNoteLabel: { fontFamily: fonts.bold },
   sticky: {
     position: "absolute",
     left: 0,

@@ -24,8 +24,10 @@ PRICES = {
 
 
 class CheckoutRequest(BaseModel):
-    purchase_type: str = Field(pattern="^(subscription|program)$")
+    purchase_type: str = Field(pattern="^(subscription|program|course|membership)$")
     program_id: str | None = None
+    course_id: str | None = None
+    plan_id: str | None = None
     origin_url: str = Field(min_length=1)
 
 
@@ -43,14 +45,43 @@ async def create_checkout_session(body: CheckoutRequest, user: dict = Depends(ge
         if not program:
             raise HTTPException(status_code=404, detail="Program not found")
 
+    course = None
+    plan = None
+    amount = PRICES.get(body.purchase_type, 0)
+    coach_id = None
+    if body.purchase_type == "course":
+        if not body.course_id:
+            raise HTTPException(status_code=400, detail="course_id required")
+        course = await db.courses.find_one({"id": body.course_id}, {"_id": 0})
+        if not course or course.get("status") != "published":
+            raise HTTPException(status_code=404, detail="Course not found")
+        if course.get("pricing_type") != "one_time" or not course.get("price"):
+            raise HTTPException(status_code=400, detail="This course isn't sold as a one-time purchase")
+        amount = float(course["price"])
+        coach_id = course["coach_id"]
+    elif body.purchase_type == "membership":
+        if not body.plan_id:
+            raise HTTPException(status_code=400, detail="plan_id required")
+        plan = await db.membership_plans.find_one({"id": body.plan_id, "active": True}, {"_id": 0})
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        amount = float(plan["price"])
+        coach_id = plan["coach_id"]
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Nothing to pay for")
+
     metadata = {"user_id": user["user_id"], "purchase_type": body.purchase_type}
     if program:
         metadata["program_id"] = program["id"]
+    if course:
+        metadata["course_id"] = course["id"]
+    if plan:
+        metadata["plan_id"] = plan["id"]
 
     try:
         session = await stripe_checkout.create_checkout_session(
             CheckoutSessionRequest(
-                amount=PRICES[body.purchase_type],
+                amount=amount,
                 currency="usd",
                 success_url=success_url,
                 cancel_url=cancel_url,
@@ -65,9 +96,12 @@ async def create_checkout_session(body: CheckoutRequest, user: dict = Depends(ge
         {"$setOnInsert": {
             "checkout_session_id": session.session_id,
             "user_id": user["user_id"],
+            "coach_id": coach_id,
             "purchase_type": body.purchase_type,
             "program_id": program["id"] if program else None,
-            "amount": PRICES[body.purchase_type],
+            "course_id": course["id"] if course else None,
+            "plan_id": plan["id"] if plan else None,
+            "amount": amount,
             "currency": "usd",
             "payment_status": "pending",
             "active": False,
@@ -93,10 +127,21 @@ async def _fulfill(session_id: str, payment_status: str) -> None:
             "fulfilled_at": datetime.now(timezone.utc),
         }},
     )
-    if purchase["purchase_type"] == "subscription":
+    kind = purchase["purchase_type"]
+    if kind == "subscription":
         await db.users.update_one(
             {"user_id": purchase["user_id"]}, {"$set": {"is_premium": True}}
         )
+    elif kind == "course" and purchase.get("course_id"):
+        course = await db.courses.find_one({"id": purchase["course_id"]}, {"_id": 0})
+        if course:
+            from routes_courses import enroll_client
+
+            await enroll_client(course["coach_id"], course["id"], purchase["user_id"], source="purchase")
+    elif kind == "membership" and purchase.get("plan_id"):
+        from memberships import activate_subscription
+
+        await activate_subscription(purchase["user_id"], purchase["plan_id"], session_id)
 
 
 @router.get("/checkout/status/{session_id}")
@@ -126,6 +171,28 @@ async def stripe_webhook(request: Request):
         event = await stripe_checkout.handle_webhook(payload, signature)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid webhook")
+
+    # Idempotency: record every event id once; replays are ignored.
+    event_id = getattr(event, "event_id", None) or getattr(event, "id", None)
+    if event_id:
+        existing = await db.webhook_events.find_one({"event_id": event_id}, {"_id": 0, "event_id": 1})
+        if existing:
+            return {"received": True, "duplicate": True}
+        await db.webhook_events.insert_one({
+            "event_id": event_id,
+            "session_id": getattr(event, "session_id", None),
+            "type": getattr(event, "event_type", None),
+            "received_at": datetime.now(timezone.utc),
+        })
+
     if event.session_id and event.payment_status:
         await _fulfill(event.session_id, event.payment_status)
+        if event.payment_status in ("unpaid", "failed", "expired"):
+            purchase = await db.purchases.find_one(
+                {"checkout_session_id": event.session_id}, {"_id": 0}
+            )
+            if purchase and purchase.get("purchase_type") == "membership":
+                from memberships import refresh_access
+
+                await refresh_access(purchase["user_id"])
     return {"received": True}

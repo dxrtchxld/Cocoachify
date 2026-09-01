@@ -60,9 +60,55 @@ const MIME_BY_EXT: Record<string, string> = {
   webp: "image/webp",
   heic: "image/heic",
   heif: "image/heif",
+  pdf: "application/pdf",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  mp3: "audio/mpeg",
+  m4a: "audio/m4a",
+  wav: "audio/wav",
+  csv: "text/csv",
+  txt: "text/plain",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-/** Upload a local image (from expo-image-picker) and return its stored relative URL. */
+/** Upload a file (image/pdf/audio/video/doc) into the coach's PRIVATE library. */
+export async function uploadPrivateFile(
+  file: { uri: string; name: string; mimeType?: string },
+  opts: { title?: string; visibility?: "private" | "clients" | "course"; courseId?: string } = {},
+): Promise<{ id: string; title: string; kind: string; url: string }> {
+  const token = await getToken();
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const type = file.mimeType || MIME_BY_EXT[ext] || "application/octet-stream";
+
+  const form = new FormData();
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(file.uri)).blob();
+    form.append("file", blob, file.name);
+  } else {
+    form.append("file", { uri: file.uri, name: file.name, type } as any);
+  }
+  form.append("title", opts.title ?? file.name);
+  form.append("visibility", opts.visibility ?? "private");
+  if (opts.courseId) form.append("course_id", opts.courseId);
+
+  const res = await fetch(`${BACKEND_URL}/api/library/files`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(typeof json?.detail === "string" ? json.detail : "Upload failed", res.status);
+  }
+  return json;
+}
+
+/** Short-lived signed URL for rendering/downloading a private file. */
+export async function privateFileUrl(fileId: string): Promise<string> {
+  const res = await api<{ url: string }>(`/library/files/${fileId}/link`);
+  return `${BACKEND_URL}${res.url}`;
+}
 export async function uploadImage(uri: string): Promise<string> {
   const token = await getToken();
   const ext = (uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();

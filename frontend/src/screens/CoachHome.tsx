@@ -159,6 +159,15 @@ export default function CoachHome() {
               <Ionicons name="barbell" size={20} color={colors.brand} />
               <Text style={styles.quickText}>Exercise Library</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              testID="quick-studio"
+              style={styles.quickCard}
+              activeOpacity={0.8}
+              onPress={() => router.push("/studio")}
+            >
+              <Ionicons name="grid" size={20} color={colors.brand} />
+              <Text style={styles.quickText}>Workspace</Text>
+            </TouchableOpacity>
           </View>
         );
       case "needs_attention":
@@ -280,7 +289,7 @@ export default function CoachHome() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xxxl + spacing.xl }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -369,9 +378,16 @@ const styles = StyleSheet.create({
   },
   statValue: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface },
   statLabel: { fontFamily: fonts.semiBold, fontSize: 9, color: colors.onSurfaceSecondary, letterSpacing: 1 },
-  quickRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl, marginTop: spacing.md },
+  quickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.md,
+  },
   quickCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "45%",
     backgroundColor: colors.brandTertiary,
     borderRadius: radius.md,
     padding: spacing.md,

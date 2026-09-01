@@ -116,7 +116,7 @@ export default function Clients() {
         <FlatList
           data={filtered}
           keyExtractor={(c) => c.user_id}
-          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+          contentContainerStyle={{ paddingBottom: spacing.xxxl + spacing.xl }}
           renderItem={({ item }) => {
             const s = STATUS_LABEL[item.status] ?? STATUS_LABEL.no_program;
             return (

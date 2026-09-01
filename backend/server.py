@@ -23,6 +23,28 @@ async def lifespan(app: FastAPI):
     await db.client_logs.create_index([("user_id", 1), ("date", -1)])
     await db.purchases.create_index("checkout_session_id", unique=True)
     await db.invites.create_index("code", unique=True)
+    await db.feature_flags.create_index("coach_id", unique=True)
+    await db.private_files.create_index("id", unique=True)
+    await db.private_files.create_index([("coach_id", 1), ("created_at", -1)])
+    await db.courses.create_index("id", unique=True)
+    await db.courses.create_index("slug", unique=True, sparse=True)
+    await db.lessons.create_index([("course_id", 1), ("order", 1)])
+    await db.course_modules.create_index([("course_id", 1), ("order", 1)])
+    await db.course_enrollments.create_index([("course_id", 1), ("user_id", 1)], unique=True)
+    await db.course_enrollments.create_index("user_id")
+    await db.lesson_completions.create_index([("user_id", 1), ("lesson_id", 1)], unique=True)
+    await db.contacts.create_index([("coach_id", 1), ("email", 1)], unique=True)
+    await db.community_posts.create_index([("coach_id", 1), ("created_at", -1)])
+    await db.community_comments.create_index([("post_id", 1), ("created_at", 1)])
+    await db.community_reactions.create_index([("post_id", 1), ("user_id", 1)], unique=True)
+    await db.community_rsvps.create_index([("post_id", 1), ("user_id", 1)], unique=True)
+    await db.subscriptions.create_index([("user_id", 1), ("plan_id", 1)], unique=True)
+    await db.webhook_events.create_index("event_id", unique=True)
+    await db.assistant_consents.create_index([("coach_id", 1), ("client_id", 1)], unique=True)
+    await db.practice_profiles.create_index("coach_id", unique=True)
+    await db.practice_installs.create_index([("coach_id", 1), ("domain", 1)], unique=True)
+    await db.certificates.create_index([("course_id", 1), ("user_id", 1)], unique=True)
+    await db.challenges.create_index([("coach_id", 1), ("starts_at", -1)])
     try:
         from storage import init_storage
         init_storage()
@@ -44,13 +66,26 @@ async def root():
     return {"message": "Co-Coachify API"}
 
 
+import routes_analytics
+import routes_assistant
 import routes_auth
+import routes_catalog
 import routes_chat
 import routes_coach
+import routes_community
+import routes_courses
+import routes_crm
+import routes_growth
+import routes_booking
 import routes_import
+import routes_landing
+import routes_library
 import routes_logs
+import routes_memberships
 import routes_misc
+import routes_modules
 import routes_payments
+import routes_plans
 import routes_programs
 import routes_uploads
 
@@ -62,7 +97,21 @@ api_router.include_router(routes_misc.router)
 api_router.include_router(routes_coach.router)
 api_router.include_router(routes_chat.router)
 api_router.include_router(routes_payments.router)
+api_router.include_router(routes_library.router)
 api_router.include_router(routes_uploads.router)
+api_router.include_router(routes_modules.router)
+api_router.include_router(routes_courses.router)
+api_router.include_router(routes_plans.router)
+api_router.include_router(routes_analytics.router)
+api_router.include_router(routes_crm.router)
+api_router.include_router(routes_landing.router)
+api_router.include_router(routes_community.router)
+api_router.include_router(routes_memberships.router)
+api_router.include_router(routes_assistant.router)
+api_router.include_router(routes_catalog.router)
+api_router.include_router(routes_growth.router)
+api_router.include_router(routes_growth.public_router)
+api_router.include_router(routes_booking.router)
 
 app.include_router(api_router)
 
