@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { colors, fonts, radius, spacing } from "../../theme";
+import ExerciseGuideSheet from "../ExerciseGuideSheet";
 
 export type PlayerExercise = {
   name: string;
@@ -80,6 +81,7 @@ export default function ExerciseBlock({
 }) {
   const totalSets = exercise.sets && exercise.sets > 0 ? exercise.sets : 1;
   const complete = setsDone >= totalSets;
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const scheme = [
     exercise.sets ? `${exercise.sets} sets` : null,
@@ -114,6 +116,16 @@ export default function ExerciseBlock({
           <Text style={[s.name, complete && s.nameDone]}>{exercise.name}</Text>
           {scheme ? <Text style={s.scheme}>{scheme}</Text> : null}
         </View>
+        <TouchableOpacity
+          testID={`exercise-ai-guide-${number}`}
+          style={s.aiBtn}
+          onPress={() => {
+            tap();
+            setGuideOpen(true);
+          }}
+        >
+          <Ionicons name="sparkles" size={16} color={colors.brand} />
+        </TouchableOpacity>
       </View>
 
       {totalSets > 1 ? (
@@ -161,6 +173,8 @@ export default function ExerciseBlock({
           <Text style={s.noteBody}>{exercise.purpose_note}</Text>
         </View>
       ) : null}
+
+      <ExerciseGuideSheet visible={guideOpen} name={exercise.name} onClose={() => setGuideOpen(false)} />
     </View>
   );
 }
@@ -191,6 +205,14 @@ const s = StyleSheet.create({
   name: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.onSurface, letterSpacing: 0.2 },
   nameDone: { color: colors.onSurfaceTertiary },
   scheme: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.brandSecondary, marginTop: 3, letterSpacing: 0.3 },
+  aiBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.brandTertiary,
+  },
   setsRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
   setDot: {
     width: 44,

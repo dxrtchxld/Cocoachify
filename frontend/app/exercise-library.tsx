@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
+import ExerciseGuideSheet from "@/src/components/ExerciseGuideSheet";
 import { api } from "@/src/lib/api";
 import { colors, fonts, radius, spacing } from "@/src/theme";
 
@@ -38,6 +39,7 @@ export default function ExerciseLibrary() {
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [guideName, setGuideName] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +110,17 @@ export default function ExerciseLibrary() {
         />
       </View>
 
+      {query.trim().length >= 2 && (
+        <TouchableOpacity
+          testID="ask-ai-guide-btn"
+          style={styles.askAiRow}
+          onPress={() => setGuideName(query.trim())}
+        >
+          <Ionicons name="sparkles" size={15} color={colors.brand} />
+          <Text style={styles.askAiText}>Get AI form guide for “{query.trim()}”</Text>
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.brand} />
@@ -158,6 +171,13 @@ export default function ExerciseLibrary() {
                   <Ionicons name="trash-outline" size={18} color={colors.onSurfaceSecondary} />
                 </TouchableOpacity>
               ) : null}
+              <TouchableOpacity
+                testID={`ai-guide-btn-${item.name}`}
+                onPress={() => setGuideName(item.name)}
+                style={styles.aiBtn}
+              >
+                <Ionicons name="sparkles" size={17} color={colors.brand} />
+              </TouchableOpacity>
             </View>
           )}
         />
@@ -199,6 +219,12 @@ export default function ExerciseLibrary() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ExerciseGuideSheet
+        visible={!!guideName}
+        name={guideName ?? ""}
+        onClose={() => setGuideName(null)}
+      />
     </View>
   );
 }
@@ -222,6 +248,23 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   searchInput: { flex: 1, color: colors.onSurface, fontFamily: fonts.regular, fontSize: 15, minHeight: 48 },
+  askAiRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  askAiText: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.brand, flexShrink: 1 },
+  aiBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.brandTertiary,
+  },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.xl },
   emptyText: { fontFamily: fonts.medium, fontSize: 13, color: colors.onSurfaceSecondary, textAlign: "center" },
   card: {

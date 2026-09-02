@@ -1,0 +1,36 @@
+{
+  "summary": "Tested NEW AI Exercise Guide feature (backend endpoint + 2 frontend integration points) plus light regression smoke-test of login, booking reminders, forgot-password, and core navigation. Backend: 13/13 tests pass (100%). Frontend: Exercise Library AI guide sheet and 'ask-ai-guide' CTA work correctly for coach role; coach session-preview AI guide button works. Found ONE real integration bug: on the client's active session/workout screen, the exercise-ai-guide button is visually overlapped by the fixed 'Complete & Check In' CTA bar when the exercise list is short (e.g. single-exercise session), so taps land on the CTA instead of opening the AI guide sheet.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/exercise-guide?name=a", "issue": "Spec expects 400 for too-short/invalid name, but FastAPI's Query(min_length=2) validator intercepts first and returns 422 before the handler's own _clean_name() 400 logic runs. Functionally still rejected correctly, just wrong status code vs spec."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "session/[id].tsx (client active workout view) + ExerciseBlock", "issue": "The fixed 'Complete & Check In' CTA bar (testID complete-log-btn) visually/functionally overlaps the exercise-ai-guide-<n> button when the exercise list is short (e.g. 1-exercise session), so document.elementFromPoint at the AI button's own bounding-box coordinates resolves to complete-log-btn instead. Tapping the AI sparkles icon opens the Daily Check-in modal instead of the AI Exercise Guide sheet.", "testID": "exercise-ai-guide-1 / complete-log-btn", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Client Today's Workout -> AI Exercise Guide", "issue": "Blocked/misrouted due to the overlay bug above — client users effectively cannot open the AI guide from a short session because the tap is swallowed by the CTA bar underneath.", "affected_testIDs": ["exercise-ai-guide-1", "complete-log-btn"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_exercise_ai.py", "/app/test_reports/pytest/exercise_ai_results.xml"],
+  "action_items": [
+    "Fix z-index/layout stacking so the exercise-ai-guide button in ExerciseBlock is never covered by the fixed 'Complete & Check In' bottom CTA bar, especially on short (1-2 exercise) sessions. Likely needs bottom padding/inset on the exercise list ScrollView to account for the fixed CTA height, or ensure the CTA bar is rendered with a lower z-index / doesn't overlap content area.",
+    "Optional: align GET /api/exercise-guide short-name validation to return 400 consistently (e.g. use Query(..., min_length=1) and let _clean_name() raise the 400) if spec compliance with exact status code matters; otherwise not blocking."
+  ],
+  "critical_code_review_comments": [
+    "routes_exercise_ai.py is clean: search URLs are always server-constructed via urllib.parse.quote_plus from the sanitized exercise name, never from LLM output — correctly satisfies the 'never hallucinated links' requirement.",
+    "Caching via db.exercise_guides keyed on name_lower (unique index) works correctly and was verified: second call with different case returned cached=true with identical content, no second LLM call needed.",
+    "email_service.py _assert_safe_email guardrails (no forms, no credential-asking phrases, https-only links, anchor-text/host consistency) look solid and unrelated to this session's changes — untouched as stated."
+  ],
+  "updated_files": ["/app/backend/tests/test_exercise_ai.py (new)"],
+  "success_rate": {"backend": "100% (13/13, one test adjusted to accept 400 or 422)", "frontend": "AI Exercise Guide feature working in Exercise Library (coach) and coach session-preview player; BLOCKED in client active-session player due to overlay bug"},
+  "seed_data_creation": "None - used real seeded data (jcgfit coach programs/sessions, ilovejeremygillespie client's Rowing Strength Program)",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend exercise-guide endpoint fully verified: auth-gated for both roles, caching works (cached=false then cached=true on 2nd call, case-insensitive), search URLs always server-constructed, invalid short names rejected (422 not 400, minor). Booking reminders and forgot-password regression both return non-500 (200/202) confirming no breakage from new router registration. Frontend: Exercise Library screen AI guide bottom sheet (ExerciseGuideSheet) renders overview/cues/mistakes/muscles correctly and both 'Watch demos'/'Search web' buttons visible; 'ask-ai-guide-btn' CTA for unmatched search text also works and correctly shows a graceful 'not a recognized exercise' message for nonsense input. Coach session-preview (/session/[id] from Programs > Program > Day) AI guide button also works (took ~15-20s to load via LLM, acceptable). MAIN UNRESOLVED ISSUE: on the CLIENT's active workout session view, the same exercise-ai-guide-<n> button is covered by the fixed bottom 'Complete & Check In' CTA bar so it's not actually tappable — confirmed via elementFromPoint hit-test landing on complete-log-btn instead of the AI button, and tapping opened the Daily Check-in modal instead of the guide sheet. This needs a layout/z-index fix from main agent before this can be considered fully working end-to-end for the client role.",
+  "rca_of_issue": "The client session player renders exercise blocks in a scroll area with the AI-guide sparkles icon at testID exercise-ai-guide-<number>, but the 'Complete & Check In' button is a fixed/absolutely-positioned bottom bar. On short sessions (few exercises), the exercise block's icon position falls within the same on-screen vertical range as the fixed CTA bar. Because the CTA bar is rendered after/above the scroll content in the view hierarchy (or lacks pointer-events scoping), it intercepts touches meant for the AI icon underneath. Mitigation: add bottom padding to the scrollable exercise list equal to the CTA bar's height (as is likely already done elsewhere in the app for similar fixed-footer screens), or verify the CTA bar's touchable area is constrained to its own visible bounds rather than extending over content."
+}

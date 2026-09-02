@@ -69,6 +69,7 @@ async def lifespan(app: FastAPI):
     await db.wearable_activities.create_index(
         [("user_id", 1), ("provider", 1), ("external_id", 1)], unique=True
     )
+    await db.exercise_guides.create_index("name_lower", unique=True)
     try:
         from storage import init_storage
         init_storage()
@@ -102,6 +103,7 @@ import routes_coach
 import routes_community
 import routes_courses
 import routes_crm
+import routes_exercise_ai
 import routes_growth
 import routes_booking
 import routes_import
@@ -141,6 +143,7 @@ api_router.include_router(routes_growth.router)
 api_router.include_router(routes_growth.public_router)
 api_router.include_router(routes_booking.router)
 api_router.include_router(routes_automations.router)
+api_router.include_router(routes_exercise_ai.router)
 api_router.include_router(routes_wearables.router)
 api_router.include_router(routes_wearables.public_router)
 

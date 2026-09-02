@@ -144,7 +144,7 @@ export default function SessionScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 132 + insets.bottom }}>
         <PlayerHero
           title={session.name}
           sessionType={session.session_type}
