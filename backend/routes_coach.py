@@ -371,3 +371,43 @@ async def coach_stats(user: dict = Depends(get_current_user)):
         "programs": programs_count,
         "active_pct": round(len(active_ids) / total * 100) if total else 0,
     }
+
+
+# ---------- Connection requests (self-serve "connect by email" needs coach approval) ----------
+
+@router.get("/connection-requests")
+async def list_connection_requests(user: dict = Depends(get_current_user)):
+    require_coach(user)
+    docs = await db.connection_requests.find(
+        {"coach_id": user["user_id"], "status": "pending"}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return [{**d, "created_at": d["created_at"].isoformat() if isinstance(d.get("created_at"), datetime) else d.get("created_at")} for d in docs]
+
+
+@router.post("/connection-requests/{req_id}/approve")
+async def approve_connection_request(req_id: str, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    req = await db.connection_requests.find_one(
+        {"id": req_id, "coach_id": user["user_id"], "status": "pending"}, {"_id": 0}
+    )
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    await db.users.update_one({"user_id": req["client_id"]}, {"$set": {"coach_id": user["user_id"]}})
+    await db.connection_requests.update_one({"id": req_id}, {"$set": {"status": "approved"}})
+
+    from automations import run_automations
+
+    await run_automations(user["user_id"], "client_connected", req["client_id"], {})
+    return {"ok": True}
+
+
+@router.post("/connection-requests/{req_id}/deny")
+async def deny_connection_request(req_id: str, user: dict = Depends(get_current_user)):
+    require_coach(user)
+    res = await db.connection_requests.update_one(
+        {"id": req_id, "coach_id": user["user_id"], "status": "pending"},
+        {"$set": {"status": "denied"}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return {"ok": True}

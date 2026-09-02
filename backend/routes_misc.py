@@ -316,34 +316,67 @@ async def create_invite(user: dict = Depends(get_current_user)):
 
 @router.post("/invites/accept")
 async def accept_invite(body: InviteAccept, user: dict = Depends(get_current_user)):
-    coach = None
     if body.code:
         invite = await db.invites.find_one({"code": body.code.upper().strip()}, {"_id": 0})
         if not invite:
             raise HTTPException(status_code=404, detail="Invalid invite code")
         coach = await db.users.find_one({"user_id": invite["coach_id"]}, {"_id": 0})
-    elif body.coach_email:
+        if not coach or coach.get("role") != "coach":
+            raise HTTPException(status_code=404, detail="Coach not found")
+        if coach["user_id"] == user["user_id"]:
+            raise HTTPException(status_code=400, detail="You can't connect to yourself")
+
+        # A shared invite code IS the coach's authorization — connect immediately.
+        await db.users.update_one(
+            {"user_id": user["user_id"]}, {"$set": {"coach_id": coach["user_id"]}}
+        )
+        await db.connection_requests.update_many(
+            {"client_id": user["user_id"], "status": "pending"}, {"$set": {"status": "approved"}}
+        )
+
+        from automations import run_automations
+
+        await run_automations(coach["user_id"], "client_connected", user["user_id"], {})
+
+        return {
+            "ok": True,
+            "status": "connected",
+            "coach": {"user_id": coach["user_id"], "name": coach.get("name"), "email": coach["email"]},
+        }
+
+    if body.coach_email:
         coach = await db.users.find_one(
             {"email": body.coach_email.lower().strip(), "role": "coach"}, {"_id": 0}
         )
         if not coach:
             raise HTTPException(status_code=404, detail="No coach found with that email")
-    else:
-        raise HTTPException(status_code=400, detail="Provide an invite code or coach email")
+        if coach["user_id"] == user["user_id"]:
+            raise HTTPException(status_code=400, detail="You can't connect to yourself")
 
-    if not coach or coach.get("role") != "coach":
-        raise HTTPException(status_code=404, detail="Coach not found")
-    if coach["user_id"] == user["user_id"]:
-        raise HTTPException(status_code=400, detail="You can't connect to yourself")
-    await db.users.update_one(
-        {"user_id": user["user_id"]}, {"$set": {"coach_id": coach["user_id"]}}
-    )
+        # Knowing a coach's email is NOT proof of a real relationship — this only
+        # files a request. The coach must approve it before coach_id is set and
+        # before this client gets any access to the coach's shared library/community.
+        existing = await db.connection_requests.find_one(
+            {"coach_id": coach["user_id"], "client_id": user["user_id"], "status": "pending"}, {"_id": 0}
+        )
+        if not existing:
+            await db.connection_requests.insert_one({
+                "id": f"creq_{uuid.uuid4().hex[:12]}",
+                "coach_id": coach["user_id"],
+                "client_id": user["user_id"],
+                "client_name": user.get("name"),
+                "client_email": user.get("email"),
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc),
+            })
 
-    from automations import run_automations
+        return {
+            "ok": True,
+            "status": "pending",
+            "coach": {"user_id": coach["user_id"], "name": coach.get("name"), "email": coach["email"]},
+        }
 
-    await run_automations(coach["user_id"], "client_connected", user["user_id"], {})
-
-    return {"ok": True, "coach": {"user_id": coach["user_id"], "name": coach.get("name"), "email": coach["email"]}}
+    raise HTTPException(status_code=400, detail="Provide an invite code or coach email")
 
 
 @router.get("/invites/clients")
@@ -357,9 +390,17 @@ async def list_clients(user: dict = Depends(get_current_user)):
 @router.get("/coach")
 async def my_coach(user: dict = Depends(get_current_user)):
     if not user.get("coach_id"):
-        return {"coach": None}
+        pending = await db.connection_requests.find_one(
+            {"client_id": user["user_id"], "status": "pending"}, {"_id": 0}
+        )
+        if pending:
+            coach = await db.users.find_one(
+                {"user_id": pending["coach_id"]}, {"_id": 0, "name": 1, "email": 1}
+            )
+            return {"coach": None, "pending": {"name": (coach or {}).get("name"), "email": (coach or {}).get("email")}}
+        return {"coach": None, "pending": None}
     coach = await db.users.find_one({"user_id": user["coach_id"]}, {"_id": 0})
-    return {"coach": user_public(coach) if coach else None}
+    return {"coach": user_public(coach) if coach else None, "pending": None}
 
 @router.post("/me/welcomed")
 async def mark_welcomed(user: dict = Depends(get_current_user)):

@@ -4,7 +4,7 @@ import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from reportlab.lib.pagesizes import A4, landscape
@@ -13,6 +13,7 @@ from reportlab.pdfgen import canvas
 from auth import get_current_user
 from db import db
 from modules import owned, require_coach, require_module, workspace_coach_id
+from rate_limit import check_rate_limit, client_ip
 
 router = APIRouter(prefix="/studio", tags=["growth"])
 public_router = APIRouter(prefix="/public", tags=["growth-public"])
@@ -73,8 +74,9 @@ async def list_certificates(user: dict = Depends(get_current_user)):
 
 
 @public_router.get("/certificates/{code}")
-async def verify_certificate(code: str):
+async def verify_certificate(code: str, request: Request):
     """Public verification — the certificate code is the shareable proof."""
+    await check_rate_limit(f"cert:ip:{client_ip(request)}", max_attempts=30, window_seconds=3600)
     cert = await db.certificates.find_one({"code": code.upper()}, {"_id": 0})
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
@@ -89,7 +91,8 @@ async def verify_certificate(code: str):
 
 
 @public_router.get("/certificates/{code}/pdf")
-async def certificate_pdf(code: str):
+async def certificate_pdf(code: str, request: Request):
+    await check_rate_limit(f"cert:ip:{client_ip(request)}", max_attempts=30, window_seconds=3600)
     cert = await db.certificates.find_one({"code": code.upper()}, {"_id": 0})
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")

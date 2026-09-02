@@ -17,6 +17,7 @@ from auth import (
     verify_password,
 )
 from db import db
+from rate_limit import check_rate_limit, check_rate_limit_failures_only, client_ip, record_failed_attempt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -61,10 +62,18 @@ async def register(body: Credentials):
 
 
 @router.post("/login")
-async def login(body: Credentials):
+async def login(body: Credentials, request: Request):
     email = body.email.lower()
+    ip_key = f"login:ip:{client_ip(request)}"
+    email_key = f"login:email:{email}"
+    # Only failed attempts count against the quota — legitimate repeat logins
+    # (multiple devices, session refresh, etc.) never get an innocent user locked out.
+    await check_rate_limit_failures_only(ip_key, max_attempts=40, window_seconds=600)
+    await check_rate_limit_failures_only(email_key, max_attempts=15, window_seconds=600)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
+        await record_failed_attempt(ip_key)
+        await record_failed_attempt(email_key)
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     return {"access_token": create_jwt(user["user_id"], email), "user": user_public(user)}
 
@@ -150,9 +159,11 @@ class ChangePasswordBody(BaseModel):
 
 
 @router.post("/forgot-password", status_code=202)
-async def forgot_password(body: ForgotBody):
+async def forgot_password(body: ForgotBody, request: Request):
     """Always returns the same generic response — never reveals whether an email exists."""
     email = body.email.lower().strip()
+    await check_rate_limit(f"forgot:ip:{client_ip(request)}", max_attempts=8, window_seconds=3600)
+    await check_rate_limit(f"forgot:email:{email}", max_attempts=3, window_seconds=3600)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if user and user.get("password_hash"):
         raw, digest = new_reset_token()
@@ -186,7 +197,8 @@ async def forgot_password(body: ForgotBody):
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetBody):
+async def reset_password(body: ResetBody, request: Request):
+    await check_rate_limit(f"reset:ip:{client_ip(request)}", max_attempts=15, window_seconds=3600)
     digest = reset_token_digest(body.token)
     record = await db.password_reset_tokens.find_one_and_delete(
         {"token_hash": digest, "expires_at": {"$gt": datetime.now(timezone.utc)}}

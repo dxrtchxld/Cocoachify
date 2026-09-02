@@ -26,6 +26,7 @@ export default function Settings() {
   const { accentColor, setAccent } = useTheme();
   const isCoach = user?.role === "coach";
   const [coach, setCoach] = useState<User | null>(null);
+  const [pendingCoach, setPendingCoach] = useState<{ name: string; email: string } | null>(null);
   const [connectMode, setConnectMode] = useState<"code" | "email">("code");
   const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
@@ -39,8 +40,9 @@ export default function Settings() {
         const clients = await api<User[]>("/coach/clients");
         setClientCount(clients.length);
       } else {
-        const c = await api<{ coach: User | null }>("/coach");
+        const c = await api<{ coach: User | null; pending: { name: string; email: string } | null }>("/coach");
         setCoach(c.coach);
+        setPendingCoach(c.pending ?? null);
       }
       await refreshUser();
     } catch {
@@ -62,13 +64,18 @@ export default function Settings() {
     setJoining(true);
     setJoinMsg(null);
     try {
-      const res = await api<{ coach: { name: string } }>("/invites/accept", {
-        method: "POST",
-        body,
-      });
-      setJoinMsg(`Connected to coach ${res.coach.name}!`);
+      const res = await api<{ status: "connected" | "pending"; coach: { name: string; email: string } }>(
+        "/invites/accept",
+        { method: "POST", body },
+      );
       setCode("");
       setEmail("");
+      if (res.status === "pending") {
+        setPendingCoach({ name: res.coach.name, email: res.coach.email });
+        setJoinMsg(null);
+      } else {
+        setJoinMsg(`Connected to coach ${res.coach.name}!`);
+      }
       await load();
     } catch (e: any) {
       setJoinMsg(e?.message || "Couldn't connect");
@@ -292,6 +299,17 @@ export default function Settings() {
                   <Text style={styles.connectedText}>Connected</Text>
                 </View>
               </View>
+            ) : pendingCoach ? (
+              <View style={styles.connectCard}>
+                <View style={styles.pendingRow}>
+                  <Ionicons name="time-outline" size={20} color={colors.warning} />
+                  <Text style={styles.connectTitle}>Request pending</Text>
+                </View>
+                <Text style={styles.connectHint}>
+                  We sent a connection request to {pendingCoach.name} ({pendingCoach.email}). They need to
+                  approve it before you&apos;ll be connected — this keeps your coach&apos;s shared files private.
+                </Text>
+              </View>
             ) : (
               <View style={styles.connectCard}>
                 <Text style={styles.connectTitle}>Connect to your coach</Text>
@@ -334,7 +352,7 @@ export default function Settings() {
                 ) : (
                   <>
                     <Text style={styles.connectHint}>
-                      Enter the email your coach uses on Co-Coachify.
+                      Enter the email your coach uses on Co-Coachify. They&apos;ll need to approve your request.
                     </Text>
                     <TextInput
                       testID="coach-email-input"
@@ -498,6 +516,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   connectTitle: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.onSurface, marginBottom: spacing.md },
+  pendingRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
   segment: {
     flexDirection: "row",
     backgroundColor: colors.surface,

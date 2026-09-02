@@ -273,13 +273,22 @@ class TestRemoveClient:
             headers={**_auth(t), "Content-Type": "application/json"},
             json={"goal": "cardio", "experience": "just_starting", "days_per_week": 3},
         )
-        # accept jcgfit invite via email
+        # Request connection via coach email, then coach approves it (SEC-001 fix:
+        # email-only connect now requires explicit coach approval before coach_id is set).
         acc = s.post(
             f"{API}/invites/accept",
             headers={**_auth(t), "Content-Type": "application/json"},
             json={"coach_email": COACH_EMAIL},
         )
         assert acc.status_code == 200, acc.text
+        assert acc.json()["status"] == "pending"
+        reqs = s.get(f"{API}/coach/connection-requests", headers=_auth(coach_token))
+        assert reqs.status_code == 200, reqs.text
+        req = next(r for r in reqs.json() if r["client_id"] == uid)
+        approve = s.post(
+            f"{API}/coach/connection-requests/{req['id']}/approve", headers=_auth(coach_token)
+        )
+        assert approve.status_code == 200, approve.text
         return {"user_id": uid, "token": t, "email": email}
 
     def test_client_shows_up_in_list(self, s, coach_token, throwaway_client):

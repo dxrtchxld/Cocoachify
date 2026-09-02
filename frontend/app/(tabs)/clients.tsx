@@ -26,6 +26,13 @@ type Client = {
   last_checkin: string | null;
 };
 
+type ConnectionRequest = {
+  id: string;
+  client_name: string | null;
+  client_email: string | null;
+  created_at: string;
+};
+
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   on_track: { label: "On Track", color: colors.success, bg: "rgba(50,215,75,0.12)" },
   behind: { label: "Behind", color: colors.warning, bg: "rgba(255,214,10,0.12)" },
@@ -35,12 +42,19 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
 export default function Clients() {
   const insets = useSafeAreaInsets();
   const [clients, setClients] = useState<Client[]>([]);
+  const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
-      setClients(await api<Client[]>("/coach/clients"));
+      const [c, r] = await Promise.all([
+        api<Client[]>("/coach/clients"),
+        api<ConnectionRequest[]>("/coach/connection-requests").catch(() => []),
+      ]);
+      setClients(c);
+      setRequests(r);
     } catch {
       // keep
     } finally {
@@ -53,6 +67,18 @@ export default function Clients() {
       load();
     }, [load]),
   );
+
+  const respond = async (id: string, action: "approve" | "deny") => {
+    setBusyId(id);
+    try {
+      await api(`/coach/connection-requests/${id}/${action}`, { method: "POST" });
+      await load();
+    } catch {
+      // keep
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const filtered = clients.filter(
     (c) =>
@@ -86,6 +112,38 @@ export default function Clients() {
           placeholderTextColor={colors.onSurfaceSecondary}
         />
       </View>
+
+      {requests.length > 0 && (
+        <View style={styles.requestsCard}>
+          <Text style={styles.requestsTitle}>
+            {requests.length} CONNECTION REQUEST{requests.length > 1 ? "S" : ""}
+          </Text>
+          {requests.map((r) => (
+            <View key={r.id} style={styles.requestRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.requestName}>{r.client_name || "Someone"}</Text>
+                <Text style={styles.requestEmail}>{r.client_email}</Text>
+              </View>
+              <TouchableOpacity
+                testID={`deny-request-${r.id}`}
+                style={styles.denyBtn}
+                disabled={busyId === r.id}
+                onPress={() => respond(r.id, "deny")}
+              >
+                <Ionicons name="close" size={16} color={colors.onSurfaceSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID={`approve-request-${r.id}`}
+                style={styles.approveBtn}
+                disabled={busyId === r.id}
+                onPress={() => respond(r.id, "approve")}
+              >
+                <Ionicons name="checkmark" size={16} color={colors.onBrand} />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.centered}>
@@ -183,6 +241,37 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   searchInput: { flex: 1, color: colors.onSurface, fontFamily: fonts.regular, fontSize: 15, minHeight: 48 },
+  requestsCard: {
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  requestsTitle: { fontFamily: fonts.bold, fontSize: 10.5, color: colors.brandSecondary, letterSpacing: 1 },
+  requestRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  requestName: { fontFamily: fonts.bold, fontSize: 14, color: colors.onSurface },
+  requestEmail: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 1 },
+  denyBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  approveBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   emptyTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.onSurface, marginTop: spacing.md },
   emptySub: {

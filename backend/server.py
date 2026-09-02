@@ -70,6 +70,10 @@ async def lifespan(app: FastAPI):
         [("user_id", 1), ("provider", 1), ("external_id", 1)], unique=True
     )
     await db.exercise_guides.create_index("name_lower", unique=True)
+    await db.rate_limit_hits.create_index("ts", expireAfterSeconds=86400)
+    await db.connection_requests.create_index("id", unique=True)
+    await db.connection_requests.create_index([("coach_id", 1), ("status", 1)])
+    await db.connection_requests.create_index([("client_id", 1), ("status", 1)])
     try:
         from storage import init_storage
         init_storage()
@@ -151,7 +155,11 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    # Auth is Bearer-token only (no cookies anywhere in this app), so wildcard
+    # origins are safe as long as credentialed (cookie-based) requests stay
+    # disabled — combining "*" with allow_credentials=True would let any origin
+    # ride along with browser credentials, which we don't need and don't want.
+    allow_credentials=False,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],

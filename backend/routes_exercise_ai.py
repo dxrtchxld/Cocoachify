@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 from auth import get_current_user
 from db import db
+from rate_limit import check_rate_limit
 
 load_dotenv()
 
@@ -101,6 +102,10 @@ async def get_guide(
 
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=503, detail="AI guide is not configured")
+
+    # Only fresh (uncached) generations hit the paid model, so rate-limit here —
+    # cached lookups above stay unlimited and cheap.
+    await check_rate_limit(f"exguide:{user['user_id']}", max_attempts=40, window_seconds=86400)
 
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
