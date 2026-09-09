@@ -40,6 +40,7 @@ ALLOWED = {
     "text/csv": "csv", "text/plain": "txt",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
 }
 MAX_BYTES = 40 * 1024 * 1024  # 40 MB
 

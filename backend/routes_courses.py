@@ -305,6 +305,7 @@ def _lesson_public(l: dict, is_coach: bool) -> dict:
         "attachments": l.get("attachments") or [],
         "release": l.get("release") or {"type": "immediate", "day_offset": 0, "date": None},
         "chapters": sorted(l.get("chapters") or [], key=lambda c: c.get("timestamp_seconds", 0)),
+        "quiz_question_count": len(l.get("quiz_questions") or []),
     }
     if out["release"].get("date"):
         out["release"] = {**out["release"], "date": _iso(out["release"]["date"])}

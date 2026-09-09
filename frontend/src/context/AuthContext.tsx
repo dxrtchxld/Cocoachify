@@ -44,6 +44,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
+  loginWithApple: (identityToken: string, fullName?: string | null, email?: string | null) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -146,6 +147,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [exchangeSession]);
 
+  const loginWithApple = useCallback(
+    async (identityToken: string, fullName?: string | null, email?: string | null) => {
+      // Reuses the same session_token mechanism as Google — no new storage/gate logic needed.
+      const data = await api<{ session_token: string; user: User }>("/auth/apple", {
+        method: "POST",
+        body: { identity_token: identityToken, full_name: fullName || undefined, email: email || undefined },
+      });
+      await setToken(data.session_token);
+      setUser(data.user);
+    },
+    [],
+  );
+
   const login = useCallback(async (email: string, password: string) => {
     const data = await api<{ access_token: string; user: User }>(
       "/auth/login",
@@ -195,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, loginWithGoogle, login, register, logout, refreshUser, updateUser }}
+      value={{ user, loading, loginWithGoogle, loginWithApple, login, register, logout, refreshUser, updateUser }}
     >
       {children}
     </AuthContext.Provider>

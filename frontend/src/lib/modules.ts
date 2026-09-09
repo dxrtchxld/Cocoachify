@@ -98,6 +98,7 @@ export type Lesson = {
   unlocked?: boolean;
   completed?: boolean;
   course_title?: string;
+  quiz_question_count?: number;
 };
 
 export type Section = { id: string | null; title: string; order: number; lessons: Lesson[] };

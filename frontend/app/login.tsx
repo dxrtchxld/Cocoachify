@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { colors, fonts, logo, radius, spacing } from "@/src/theme";
 
 export default function Login() {
-  const { user, loginWithGoogle, login, register } = useAuth();
+  const { user, loginWithGoogle, loginWithApple, login, register } = useAuth();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [showEmail, setShowEmail] = useState(false);
@@ -30,10 +31,17 @@ export default function Login() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
     if (user) router.replace("/");
   }, [user]);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+    }
+  }, []);
 
   const showError = (msg: string) => {
     if (Platform.OS === "web") {
@@ -51,6 +59,25 @@ export default function Login() {
       showError("Google sign-in didn't complete. Please try again.");
     } finally {
       setGoogleBusy(false);
+    }
+  };
+
+  const handleApple = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) throw new Error("No identity token returned");
+      const fullName = credential.fullName
+        ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(" ")
+        : null;
+      await loginWithApple(credential.identityToken, fullName, credential.email);
+    } catch (e: any) {
+      if (e?.code === "ERR_REQUEST_CANCELED") return; // user dismissed — not an error
+      showError("Apple sign-in didn't complete. Please try again.");
     }
   };
 
@@ -107,6 +134,16 @@ export default function Login() {
             )}
           </TouchableOpacity>
           <Text style={styles.googleHint}>Fast, secure sign-in — no password to remember</Text>
+
+          {appleAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={12}
+              style={styles.appleBtn}
+              onPress={handleApple}
+            />
+          )}
 
           {!showEmail ? (
             <TouchableOpacity
@@ -228,6 +265,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.sm,
   },
+  appleBtn: { minHeight: 58, marginTop: spacing.md },
   emailLink: { alignItems: "center", marginTop: spacing.xl, minHeight: 44, justifyContent: "center" },
   emailLinkText: {
     fontFamily: fonts.semiBold,

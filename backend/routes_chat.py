@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -8,6 +9,7 @@ from auth import get_current_user
 from db import db
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
 
 
 async def _get_peer(user: dict, peer_id: str) -> dict:
@@ -62,4 +64,19 @@ async def send_message(peer_id: str, body: MessageBody, user: dict = Depends(get
     await db.messages.insert_one(dict(message))
     message.pop("_id", None)
     message["created_at"] = message["created_at"].isoformat()
+
+    try:
+        from routes_push import send_push
+
+        await send_push(
+            recipients=[peer_id],
+            data={
+                "title": user.get("name") or "New message",
+                "message": message["text"][:140],
+                "action_url": f"/chat/{user['user_id']}",
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Chat push failed (non-blocking): %s", exc)
+
     return message

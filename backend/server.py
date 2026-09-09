@@ -33,6 +33,7 @@ async def _booking_reminder_loop():
 async def lifespan(app: FastAPI):
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
+    await db.users.create_index("apple_sub", unique=True, sparse=True)
     await db.user_sessions.create_index("session_token", unique=True)
     await db.user_sessions.create_index("user_id")
     await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
@@ -74,6 +75,9 @@ async def lifespan(app: FastAPI):
     await db.connection_requests.create_index("id", unique=True)
     await db.connection_requests.create_index([("coach_id", 1), ("status", 1)])
     await db.connection_requests.create_index([("client_id", 1), ("status", 1)])
+    await db.course_imports.create_index("id", unique=True)
+    await db.course_imports.create_index("coach_id")
+    await db.quiz_submissions.create_index([("lesson_id", 1), ("user_id", 1), ("submitted_at", -1)])
     try:
         from storage import init_storage
         init_storage()
@@ -107,10 +111,12 @@ import routes_coach
 import routes_community
 import routes_courses
 import routes_crm
+import routes_course_import
 import routes_exercise_ai
 import routes_growth
 import routes_booking
 import routes_import
+import routes_quizzes
 import routes_landing
 import routes_library
 import routes_logs
@@ -120,6 +126,7 @@ import routes_modules
 import routes_payments
 import routes_plans
 import routes_programs
+import routes_push
 import routes_uploads
 import routes_wearables
 
@@ -135,6 +142,8 @@ api_router.include_router(routes_library.router)
 api_router.include_router(routes_uploads.router)
 api_router.include_router(routes_modules.router)
 api_router.include_router(routes_courses.router)
+api_router.include_router(routes_course_import.router)
+api_router.include_router(routes_quizzes.router)
 api_router.include_router(routes_plans.router)
 api_router.include_router(routes_analytics.router)
 api_router.include_router(routes_crm.router)
@@ -150,6 +159,7 @@ api_router.include_router(routes_automations.router)
 api_router.include_router(routes_exercise_ai.router)
 api_router.include_router(routes_wearables.router)
 api_router.include_router(routes_wearables.public_router)
+api_router.include_router(routes_push.router)
 
 app.include_router(api_router)
 

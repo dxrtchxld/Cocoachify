@@ -70,6 +70,7 @@ const MIME_BY_EXT: Record<string, string> = {
   txt: "text/plain",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
 
 /** Upload a file (image/pdf/audio/video/doc) into the coach's PRIVATE library. */
@@ -109,6 +110,46 @@ export async function privateFileUrl(fileId: string): Promise<string> {
   const res = await api<{ url: string }>(`/library/files/${fileId}/link`);
   return `${BACKEND_URL}${res.url}`;
 }
+
+export type ImportedFile = { id: string | null; filename: string; kind: string; size: number; error: string | null };
+export type ImportPlan = {
+  course_title: string;
+  course_subtitle: string;
+  modules: { title: string; lessons: { title: string; summary: string; file_id: string | null; kind: string | null }[] }[];
+};
+
+/** Bulk-upload files for the "Auto-Organize" course import flow; returns the
+ * AI-suggested Course/Module/Lesson plan for the coach to review before creating anything. */
+export async function uploadCourseImport(
+  files: { uri: string; name: string; mimeType?: string }[],
+  courseTitle: string,
+): Promise<{ id: string; files: ImportedFile[]; plan: ImportPlan }> {
+  const token = await getToken();
+  const form = new FormData();
+  for (const file of files) {
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const type = file.mimeType || MIME_BY_EXT[ext] || "application/octet-stream";
+    if (Platform.OS === "web") {
+      const blob = await (await fetch(file.uri)).blob();
+      form.append("files", blob, file.name);
+    } else {
+      form.append("files", { uri: file.uri, name: file.name, type } as any);
+    }
+  }
+  form.append("course_title", courseTitle);
+
+  const res = await fetch(`${BACKEND_URL}/api/studio/courses/import`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(typeof json?.detail === "string" ? json.detail : "Import failed", res.status);
+  }
+  return json;
+}
+
 export async function uploadImage(uri: string): Promise<string> {
   const token = await getToken();
   const ext = (uri.split("?")[0].split(".").pop() || "jpg").toLowerCase();

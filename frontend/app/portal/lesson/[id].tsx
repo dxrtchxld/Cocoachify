@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -151,6 +151,15 @@ export default function PortalLesson() {
               ))}
             </View>
           </>
+        ) : null}
+
+        {(lesson.quiz_question_count ?? 0) > 0 ? (
+          <Button
+            testID="take-quiz-btn"
+            title={`✨ Take quiz (${lesson.quiz_question_count} question${lesson.quiz_question_count === 1 ? "" : "s"})`}
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/portal/quiz", params: { lessonId: lesson.id } })}
+          />
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

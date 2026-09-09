@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.geminimobileapp.y1uaoz"
+      "bundleIdentifier": "com.emergent.geminimobileapp.y1uaoz",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +37,8 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

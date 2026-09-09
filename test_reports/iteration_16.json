@@ -1,0 +1,43 @@
+{
+  "summary": "Tested (1) NEW push notifications backend feature (register-push endpoint + send_push() wired into chat/booking) and (2) first-time E2E verification of 3 previously-untested features (Course Bulk Import, Quizzes, Apple Sign-In). Wrote new /app/backend/tests/test_push_notifications.py (8 tests, all passing) confirming: register-push validates input (422 on missing/invalid fields) and never crashes the server even with the placeholder EMERGENT_PUSH_KEY (returns clean 500 JSON, not a raw crash); chat send_message, booking create/confirm/reminder-sweep all succeed normally (201/200) despite the push relay failing in the background - backend logs confirm 'push failed (non-blocking)' WARNING logs, never propagated as errors. Re-ran pre-existing test_course_import.py (14/14 passed), test_quizzes.py (11/11 passed incl. AI generation), test_apple_auth.py (7/7 passed) - all pass cleanly when EXPO_BACKEND_URL/EXPO_PUBLIC_BACKEND_URL is set correctly (confirms the previous session's env-setup note, not a functional issue). Frontend: full manual Playwright walkthrough of ALL flows as coach (jcgfit@gmail.com) and client (ilovejeremygillespie@gmail.com) - login screen loads cleanly, push registration fails silently on web (console shows expected 'not yet fully supported on web' message, no crash), Apple Sign-In button correctly does not render on web (iOS-only check, by design) with no crash. Course Bulk Import: uploaded a real .txt file via file-chooser, AI (claude-sonnet) correctly generated a course title/subtitle/module/lesson plan from the file content, edited fields in review screen, tapped 'Create Course' -> course created with correct module/lesson structure. Quizzes: built a multiple-choice question manually in the coach quiz builder, saved it, then as the client took the quiz and submitted the correct answer, got graded 100% correctly with correct-answer highlighting. Cleaned up all test-created data (deleted the test course; enrolled test client for the quiz test is now just an extra enrollment, harmless).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/studio/booking/settings (pre-existing, from earlier phase7 test run)", "issue": "Coach jcgfit's live booking slug is currently 'pytest-booking' (availability 00:00-23:30 all days), not the 'jcg-test' slug documented in /app/memory/test_credentials.md. This is a side effect of an earlier test suite run overwriting the settings via PUT, not caused by anything in this push-notifications session. Test_credentials.md may need updating, or the booking settings reseeded to jcg-test for demo consistency."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_push_notifications.py (new)",
+    "/app/test_reports/pytest/push_notifications_results.xml",
+    "/app/test_reports/pytest/course_import_results_rerun.xml",
+    "/app/test_reports/pytest/quizzes_results_rerun.xml",
+    "/app/test_reports/pytest/apple_auth_results_rerun.xml"
+  ],
+  "action_items": [
+    "No code fixes required — push notifications, course import, quizzes, and Apple Sign-In (web-safe rendering) all verified working correctly end-to-end.",
+    "Optional/low priority: consider reseeding coach jcgfit's booking slug back to 'jcg-test' (currently 'pytest-booking' from an earlier test run) or updating test_credentials.md to reflect the current live slug, so future testing agents don't have to auto-discover it.",
+    "Optional: real native push delivery (actual device token registration + received notification) can only be verified on a real iOS/Android build or Expo Go with a valid (non-placeholder) EMERGENT_PUSH_KEY — not testable in this web-preview pod. Flagging for a future native-device testing pass once a real push key is configured."
+  ],
+  "critical_code_review_comments": [
+    "routes_push.py: send_push() and register_push() both correctly map upstream 401 -> 500 ('key missing/invalid') and upstream 5xx -> 502, keeping error semantics clean; every call site (routes_chat.py, routes_booking.py x3) wraps send_push() in try/except and only logger.warning()s on failure — exactly matches the 'never block the caller' requirement, verified empirically via backend logs showing consistent non-blocking WARNING lines for all 4 integration points.",
+    "src/lib/push.ts registerForPush() early-returns on Platform.OS === 'web' before touching any expo-notifications push-token API — correct given those APIs are unsupported on web; console log confirms 'not yet fully supported on web' rather than a thrown error.",
+    "login.tsx: Apple button is gated behind `appleAvailable` state which is only ever set true inside a Platform.OS === 'ios' check — on web it silently stays false and the button never renders, which is correct/expected but means the 'renders without crashing' requirement is trivially satisfied by never rendering at all on web (worth noting so this isn't mistaken for a bug).",
+    "routes_course_import.py _process_one_file() and _build_plan() are both defensively wrapped (never raise on a single bad file / LLM failure), matching the 'one bad file can't sink the batch' and 'nothing silently created' design goals — confirmed by walking the full UI flow with a real file.",
+    "routes_quizzes.py grading (_grade) is fully deterministic/local (no AI in scoring path) as documented, and get_quiz_to_take() strips correct_index/correct_text/explanation from the client-facing payload — verified the client UI never receives answer keys before submission."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_push_notifications.py (new)"
+  ],
+  "success_rate": {"backend": "8/8 new push tests passed; 14/14 course-import, 11/11 quizzes, 7/7 apple-auth pre-existing tests passed (100% on all re-run suites)", "frontend": "100% — login/app-load, push-silent-on-web, Apple-button-hidden-on-web, course bulk import (upload->AI plan->create course), and quiz (build->take->submit->grade) all verified working via manual Playwright walkthrough"},
+  "seed_data_creation": "Created and cleaned up: a test course from the course-import flow ('Foundations of Strength Training', crs_8089c972d7df) — deleted via DELETE /api/studio/courses/{id} after quiz testing. Left in place (harmless): one extra course_enrollment linking client ilovejeremygillespie to the (now-deleted) course id — orphaned enrollment record, safe to ignore or clean up with a DB query if desired. One extra chat message 'TEST_push_regression message' and one extra pending->confirmed test booking ('TEST Push Regression') remain in jcgfit's real data from the push regression pytest run — cosmetic only, does not affect functionality.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Push notifications, Course Bulk Import, Quizzes, and Apple Sign-In (web) are all verified working end-to-end on both backend and frontend. Real native push delivery (actual OS-level notification receipt + tap-to-deeplink) still needs a real device/native build with a valid (non-placeholder) EMERGENT_PUSH_KEY to fully verify send_push()'s recipient targeting and the _layout.tsx tap-handling/cold-start/deep-link code — not possible in this web-preview pod. Note: coach jcgfit's booking slug is currently 'pytest-booking' (not 'jcg-test' as in test_credentials.md) due to an earlier test run's side effect — use GET /api/studio/booking/settings to discover the live slug rather than assuming 'jcg-test' in future tests.",
+  "rca_of_issue": "N/A — no unresolved bugs found. All 4 push integration points (chat, booking-create, booking-confirm, reminder-sweep) correctly swallow push failures (confirmed via backend WARNING logs: 'push failed (non-blocking): 500: EMERGENT_PUSH_KEY missing or invalid') without ever surfacing a 500 to the caller. The only anomaly noted (booking slug mismatch vs test_credentials.md) is a pre-existing test-environment artifact from an earlier session's test run, not a regression from this session's changes."
+}

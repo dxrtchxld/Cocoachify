@@ -348,6 +348,14 @@ export default function LessonEditor() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button testID="save-lesson-btn" title={lessonId ? "Save lesson" : "Add lesson"} onPress={save} loading={saving} />
         {lessonId ? (
+          <Button
+            testID="manage-quiz-btn"
+            title="Manage quiz"
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/studio/lesson-quiz", params: { lessonId: String(lessonId) } })}
+          />
+        ) : null}
+        {lessonId ? (
           <Button testID="delete-lesson-btn" title="Delete lesson" variant="ghost" onPress={remove} />
         ) : null}
       </ScrollView>

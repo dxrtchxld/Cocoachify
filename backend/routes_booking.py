@@ -334,6 +334,20 @@ async def create_booking(slug: str, body: BookBody, request: Request):
                 "created_at": datetime.now(timezone.utc),
             })
 
+    try:
+        from routes_push import send_push
+
+        await send_push(
+            recipients=[coach_id],
+            data={
+                "title": "New booking request",
+                "message": f"{name} requested {st['name']} on {starts.strftime('%b %d, %I:%M %p')}",
+                "action_url": "/studio/booking",
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Booking-request push failed (non-blocking): %s", exc)
+
     return _booking_public(doc)
 
 
@@ -405,6 +419,19 @@ async def decide_booking(booking_id: str, body: DecisionBody, user: dict = Depen
             "text": text,
             "created_at": datetime.now(timezone.utc),
         })
+        try:
+            from routes_push import send_push
+
+            await send_push(
+                recipients=[b["client_id"]],
+                data={
+                    "title": "Booking confirmed",
+                    "message": f"Your {b.get('session_type_name')} is confirmed for {when}",
+                    "action_url": "/booking",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Booking-confirmed push failed (non-blocking): %s", exc)
 
     return {"ok": True, "status": status}
 
@@ -465,6 +492,20 @@ async def run_reminder_sweep(coach_id: str | None = None) -> dict:
                 "created_at": now,
             })
             chat_sent += 1
+            try:
+                from routes_push import send_push
+
+                await send_push(
+                    recipients=[b["client_id"]],
+                    data={
+                        "title": "Session reminder",
+                        "message": f"Your {b.get('session_type_name')} with {coach_name} is tomorrow, {when_local}",
+                        "action_url": "/booking",
+                    },
+                    idempotency_key=f"reminder_{b['id']}",
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Booking-reminder push failed for %s (non-blocking): %s", b.get("id"), exc)
 
         if b.get("email"):
             try:

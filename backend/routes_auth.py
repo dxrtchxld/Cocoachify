@@ -1,8 +1,12 @@
+import json
 import os
+import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 
@@ -23,6 +27,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 GENERIC_RESET_MESSAGE = {"message": "If that email is registered, a reset link will be sent."}
+
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_AUDIENCES = [a.strip() for a in os.environ.get("APPLE_AUDIENCES", "").split(",") if a.strip()]
+_apple_jwks_cache: dict = {"keys": None, "fetched_at": 0.0}
 
 
 class Credentials(BaseModel):
@@ -127,6 +136,99 @@ async def exchange_session(body: SessionExchange):
             "expires_at": now + timedelta(days=7),
         }
     )
+    return {"session_token": session_token, "user": user_public(user)}
+
+
+async def _get_apple_jwks(force: bool = False) -> list[dict]:
+    now = time.time()
+    if not force and _apple_jwks_cache["keys"] and now - _apple_jwks_cache["fetched_at"] < 3600:
+        return _apple_jwks_cache["keys"]
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(APPLE_JWKS_URL)
+    resp.raise_for_status()
+    keys = resp.json().get("keys", [])
+    _apple_jwks_cache["keys"] = keys
+    _apple_jwks_cache["fetched_at"] = now
+    return keys
+
+
+class AppleSignInBody(BaseModel):
+    identity_token: str
+    full_name: str | None = None
+    email: str | None = None
+
+
+@router.post("/apple")
+async def apple_sign_in(body: AppleSignInBody, request: Request):
+    """Verify a Sign in with Apple identityToken and issue a session_token —
+    reuses the exact same user_sessions mechanism as Google auth above, so
+    get_current_user() needs no changes at all to accept it."""
+    if not APPLE_AUDIENCES:
+        raise HTTPException(status_code=503, detail="Apple Sign-In is not configured")
+    await check_rate_limit_failures_only(f"apple:ip:{client_ip(request)}", max_attempts=20, window_seconds=600)
+
+    try:
+        header = jwt.get_unverified_header(body.identity_token)
+    except jwt.InvalidTokenError:
+        await record_failed_attempt(f"apple:ip:{client_ip(request)}")
+        raise HTTPException(status_code=401, detail="Invalid Apple credential")
+
+    keys = await _get_apple_jwks()
+    jwk = next((k for k in keys if k.get("kid") == header.get("kid")), None)
+    if not jwk:
+        keys = await _get_apple_jwks(force=True)  # Apple rotates keys occasionally
+        jwk = next((k for k in keys if k.get("kid") == header.get("kid")), None)
+    if not jwk:
+        await record_failed_attempt(f"apple:ip:{client_ip(request)}")
+        raise HTTPException(status_code=401, detail="Invalid Apple credential")
+
+    try:
+        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(jwk))
+        payload = jwt.decode(
+            body.identity_token,
+            key=public_key,
+            algorithms=["RS256"],
+            audience=APPLE_AUDIENCES,
+            issuer=APPLE_ISSUER,
+        )
+    except jwt.InvalidTokenError as exc:
+        await record_failed_attempt(f"apple:ip:{client_ip(request)}")
+        raise HTTPException(status_code=401, detail=f"Apple credential verification failed: {str(exc)[:100]}")
+
+    apple_sub = payload.get("sub")
+    if not apple_sub:
+        raise HTTPException(status_code=401, detail="Invalid Apple credential")
+
+    user = await db.users.find_one({"apple_sub": apple_sub}, {"_id": 0})
+    if not user:
+        # Apple only sends `email`/`full_name` on the FIRST sign-in ever for this
+        # app — capture whatever the client forwarded from that first response.
+        token_email = payload.get("email")
+        email = (token_email or body.email or f"{apple_sub}@privaterelay.appleid.com").lower()
+        user = {
+            "user_id": new_user_id(),
+            "email": email,
+            "name": (body.full_name or "").strip() or email.split("@")[0],
+            "picture": None,
+            "password_hash": None,
+            "role": None,
+            "onboarding_completed": False,
+            "is_premium": False,
+            "coach_id": None,
+            "apple_sub": apple_sub,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(dict(user))
+
+    session_token = secrets.token_urlsafe(32)
+    now = datetime.now(timezone.utc)
+    await db.user_sessions.insert_one({
+        "session_id": str(uuid.uuid4()),
+        "session_token": session_token,
+        "user_id": user["user_id"],
+        "created_at": now,
+        "expires_at": now + timedelta(days=7),
+    })
     return {"session_token": session_token, "user": user_public(user)}
 
 

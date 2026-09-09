@@ -86,12 +86,20 @@ export default function CoursesScreen() {
       {loading ? (
         <Loading />
       ) : courses.length === 0 ? (
-        <EmptyState
-          testID="courses-empty"
-          icon="school-outline"
-          title="No courses yet"
-          body="Build a course with lessons, drip release and cohorts — separate from your day-to-day programs."
-        />
+        <View style={{ padding: spacing.lg, gap: spacing.md }}>
+          <EmptyState
+            testID="courses-empty"
+            icon="school-outline"
+            title="No courses yet"
+            body="Build a course with lessons, drip release and cohorts — separate from your day-to-day programs."
+          />
+          <Button
+            testID="auto-organize-empty-btn"
+            title="✨ Auto-Organize from files"
+            variant="secondary"
+            onPress={() => router.push("/studio/course-import")}
+          />
+        </View>
       ) : (
         <FlatList
           data={courses}
@@ -139,6 +147,17 @@ export default function CoursesScreen() {
         <Field label="PRICE (USD, 0 = FREE)" value={price} onChangeText={setPrice} placeholder="0" keyboardType="numeric" testID="course-price-input" />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button testID="create-course-btn" title="Create course" onPress={create} loading={saving} />
+        <TouchableOpacity
+          testID="auto-organize-link-btn"
+          style={styles.altLink}
+          onPress={() => {
+            setOpen(false);
+            router.push("/studio/course-import");
+          }}
+        >
+          <Ionicons name="sparkles" size={14} color={colors.brand} />
+          <Text style={styles.altLinkText}>Or auto-organize from files instead</Text>
+        </TouchableOpacity>
       </Sheet>
     </View>
   );
@@ -154,4 +173,6 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.semiBold, fontSize: 11.5, color: colors.brandSecondary, letterSpacing: 0.4, marginTop: 2 },
   error: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.error },
   radiusRef: { borderRadius: radius.md },
+  altLink: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: spacing.sm, paddingVertical: spacing.sm },
+  altLinkText: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.brand },
 });
