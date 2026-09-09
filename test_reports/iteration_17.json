@@ -1,0 +1,40 @@
+{
+  "summary": "Full regression pass after the Expo SDK 54->57 major upgrade (react 19.2.3, react-native 0.86.3, reanimated 4.5.1, gesture-handler 2.32, worklets 0.10.1, screens/svg/webview/safe-area-context bumps + newly added expo-notifications/expo-device). BACKEND: cleared stale/duplicate expo log spam and confirmed Metro/expo boot clean (no port-conflict or version-mismatch warnings after a clean restart). Ran full pytest suite (242 tests, EXPO_PUBLIC_BACKEND_URL set correctly) -> 241 passed, 1 failed (rate-limit collision on Apple-auth malformed-token test caused by prior rapid test runs consuming the same rate-limit bucket -> 429 instead of expected 401; NOT a regression, confirmed via test isolation logic in test_apple_auth.py). FRONTEND: Manual Playwright walkthrough covering smoke boot, email/password login (coach + client), tab navigation (role='tab' selectors work correctly, react-native-screens/gesture-handler unaffected), client detail drill-down + back nav, COACH<->CLIENT CHAT (found and fixed a real regression - see below), client portal (My Journey: courses, sessions list, community, files, consent), course detail + lesson video screen (expected 'video can't play' H.264 overlay in headless Chromium, matches documented limitation), lesson mark-complete/undo, Coach Workspace (9/9 modules), Booking settings screen (weekly availability, session types, pending/confirmed requests list, Cancel/Prep-with-AI actions), public unauthenticated booking page (date/slot picker), and Paywall modal (gradient/animated CTA). Found and fixed ONE real regression: the chat screen ([id].tsx) threw a persistent red 'Unexpected text node' RN-web error on every render because of a raw whitespace text node between two JSX tags on the same line (missing newline) - this broke the FlatList render area visually (blank chat body with error banner) though messages could still be sent underneath. Fixed by adding the missing newline; re-verified chat renders and sends/receives cleanly post-fix with zero console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/apple (test_apple_auth.py::TestAppleSignInMalformedToken)", "issue": "Test received 429 instead of expected 401 due to rate-limit bucket exhaustion from prior test runs in the same session against the same auth endpoint. Pre-existing test-environment flakiness pattern (documented in earlier iteration reports), not caused by the SDK bump - backend code was not touched this session per problem statement."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "app/chat/[id].tsx (chat header)", "issue": "FIXED: raw whitespace text node between View and TouchableOpacity tags (missing newline on line 118) caused a persistent 'Unexpected text node: . A text node cannot be a child of a <View>' error banner on every chat screen load, breaking the visual layout of the message list area. Root-caused and fixed by adding the missing newline; verified clean re-render and message send/receive with zero console errors after fix.", "testID": "back-btn", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/pytest/sdk57_regression_results.xml"
+  ],
+  "action_items": [
+    "No further action needed for the chat text-node bug - already fixed and re-verified in /app/frontend/app/chat/[id].tsx.",
+    "Optional/low priority: booking module has accumulated a lot of leftover TEST_/Pytest test data (bookings, TEST_ Confirm Flow Course x multiple, connection requests) from prior testing sessions across many iterations - consider a DB cleanup pass before any demo, not a functional bug.",
+    "Optional: exclude the real seeded jcgfit/ilovejeremygillespie accounts from repeated rate-limited endpoint tests (forgot-password, apple-auth) in CI to avoid future 429-vs-expected-status test flakiness, as flagged in iteration_15 and reproduced again here.",
+    "Backend confirmed NOT requiring any changes for this SDK bump - all 241/242 non-flaky tests pass."
+  ],
+  "critical_code_review_comments": [
+    "The regression found (raw whitespace text node in chat/[id].tsx) is a plain JS/JSX authoring bug unrelated to the SDK version bump itself (react-native-web's invariant check for text-node children of View has existed for a long time) - it was simply latent/undetected until this regression pass exercised the chat screen.",
+    "Tab navigation relies purely on text-label selectors with no testID on Tabs.Screen options - not a bug, but for future test robustness, consider adding tabBarTestID or accessibilityLabel props distinct from the visible label text (e.g. stat cards on Home also render the literal string 'CLIENTS' which can collide with the Clients tab label in case-insensitive text selectors).",
+    "expo.err.log had accumulated stale 'expo@54.0.36 expected ~54.0.37' / port-3001-prompt entries from much earlier in the session's history; a clean restart confirmed these were stale log artifacts, not live version-mismatch warnings - installed expo is correctly 57.0.21 matching package.json ^57.0.9."
+  ],
+  "updated_files": [
+    "/app/frontend/app/chat/[id].tsx (fixed missing newline causing raw whitespace text node / RN-web render error)"
+  ],
+  "success_rate": {"backend": "241/242 = 99.6% (1 failure is pre-existing rate-limit test-collision artifact, not an SDK regression)", "frontend": "100% of tested flows working after 1 fix - smoke boot, coach+client login, tab/stack navigation, client drill-down, chat (fixed), portal/courses/lesson video+completion, coach workspace/booking settings+requests, public booking page, paywall modal all verified with zero remaining console errors"},
+  "seed_data_creation": "Sent one throwaway chat message 'TEST_sdk57_regression message' from coach to client 'Josh' during chat regression testing - harmless, matches existing TEST_ prefix convention, left in place per light cleanup guidance (cosmetic only).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "SDK 54->57 upgrade regression pass is COMPLETE and the app is healthy. One real bug found and fixed: chat/[id].tsx had a raw whitespace text-node JSX bug (missing newline) causing a persistent RN-web render error on the chat screen - already fixed, verified working (message send/receive clean, zero console errors). Backend fully passes (241/242, 1 pre-existing flaky rate-limit test unrelated to this session). Video lesson playback shows the EXPECTED 'can't play here' overlay in headless Chromium (documented limitation, not a bug) but mark-complete/undo works fine underneath. Apple Sign-In and Push Notifications correctly do not render/execute native flows on web (by design, not tested further per instructions). All 8 coach workspace modules load without error. No other console errors or red-screen crashes encountered anywhere in the app during this full regression pass.",
+  "rca_of_issue": "Chat screen bug RCA: in app/chat/[id].tsx line 118 (pre-fix), the closing '>' of the header View's opening tag was immediately followed by literal spaces and then '<TouchableOpacity' on the SAME line with no newline in between (`}]}>        <TouchableOpacity ...`). JSX/Babel only strips whitespace-only text that spans a newline; same-line whitespace between two sibling-adjacent tags is preserved as a real text-node child. react-native-web's View component throws/logs an invariant violation ('Unexpected text node... cannot be a child of a View') for any non-empty text child that isn't wrapped in <Text>, which surfaced as a persistent red error banner and disrupted the chat screen's visual layout on every load. Mitigation applied: inserted a newline between the two JSX tags so Babel correctly strips the whitespace at compile time; verified via fresh Playwright run that the chat screen now renders cleanly with zero console errors and messages send/receive correctly."
+}
