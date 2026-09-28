@@ -40,7 +40,7 @@ export default function RoleSelect() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl }]}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.md }]}>
       <Text style={styles.kicker}>WELCOME TO CO-COACHIFY</Text>
       <Text style={styles.title}>HOW WILL YOU{"\n"}USE THE APP?</Text>
       <Text style={styles.sub}>You can invite clients or connect to a coach after this step.</Text>
@@ -116,7 +116,7 @@ export default function RoleSelect() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface, paddingHorizontal: spacing.xl },
   kicker: { fontFamily: fonts.bold, fontSize: 12, color: colors.brandSecondary, letterSpacing: 2 },
-  title: { fontFamily: fonts.displayBold, fontSize: 36, lineHeight: 42, color: colors.onSurface, marginTop: spacing.sm },
+  title: { fontFamily: fonts.displayBold, fontSize: 32, lineHeight: 38, color: colors.onSurface, marginTop: spacing.xs },
   sub: { fontFamily: fonts.regular, fontSize: 14, color: colors.onSurfaceSecondary, marginTop: spacing.sm, marginBottom: spacing.xxl },
   card: {
     flexDirection: "row",

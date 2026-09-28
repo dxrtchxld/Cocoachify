@@ -40,6 +40,52 @@ export type User = {
   welcomed?: boolean;
 };
 
+export const DEMO_COACH: User = {
+  user_id: "demo_coach_1",
+  email: "coach@example.com",
+  name: "Coach Jordan",
+  picture: null,
+  role: "coach",
+  coach_specialty: "fitness",
+  theme_color: null,
+  font_pack: null,
+  brand_logo: null,
+  brand_banner: null,
+  brand_tagline: "Unleash your full athletic potential",
+  is_coach: true,
+  is_premium: true,
+  coach_id: null,
+  onboarding: null,
+  onboarding_completed: true,
+  welcomed: true,
+};
+
+export const DEMO_CLIENT: User = {
+  user_id: "demo_client_1",
+  email: "client@example.com",
+  name: "Alex Smith",
+  picture: null,
+  role: "client",
+  coach_specialty: null,
+  theme_color: null,
+  font_pack: null,
+  brand_logo: null,
+  brand_banner: null,
+  brand_tagline: null,
+  is_coach: false,
+  is_premium: false,
+  coach_id: "demo_coach_1",
+  onboarding: {
+    goal: "Build lean muscle and improve mobility",
+    experience: "Intermediate",
+    days_per_week: 4,
+    focus: "Strength & Hypertrophy",
+    notes: "Training 4 days a week, focusing on strength and functional fitness.",
+  },
+  onboarding_completed: true,
+  welcomed: true,
+};
+
 type AuthContextType = {
   user: User | null;
   loading: boolean;
@@ -47,6 +93,7 @@ type AuthContextType = {
   loginWithApple: (identityToken: string, fullName?: string | null, email?: string | null) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginAsDemo: (role: "coach" | "client") => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (patch: Partial<User>) => void;
@@ -70,17 +117,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const exchangeSession = useCallback(async (sessionId: string) => {
     if (processedSessionIds.has(sessionId)) return;
     processedSessionIds.add(sessionId);
-    const data = await api<{ session_token: string; user: User }>(
-      "/auth/session",
-      { method: "POST", body: { session_id: sessionId } },
-    );
-    await setToken(data.session_token);
-    setUser(data.user);
+
+    // Clean session_id immediately so browser history doesn't retain it on reload or error
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      const cleaned = window.location.href
-        .replace(/([?#&])session_id=[^&#]+&?/, "$1")
-        .replace(/[?#&]$/, "");
-      window.history.replaceState(window.history.state, "", cleaned);
+      try {
+        const cleaned = window.location.href
+          .replace(/([?#&])session_id=[^&#]+&?/, "$1")
+          .replace(/[?#&]$/, "");
+        window.history.replaceState(window.history.state, "", cleaned);
+      } catch {}
+    }
+
+    try {
+      const data = await api<{ session_token: string; user: User }>(
+        "/auth/session",
+        { method: "POST", body: { session_id: sessionId } },
+      );
+      await setToken(data.session_token);
+      setUser(data.user);
+    } catch (err) {
+      console.warn("Session exchange error:", err);
+      throw err;
     }
   }, []);
 
@@ -107,8 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           const token = await getToken();
           if (token) {
-            const me = await api<User>("/auth/me");
-            setUser(me);
+            if (token === "demo_token_coach" || token === "demo_token_client") {
+              // Demo tokens are session-only — clear stale ones so we return to login
+              await setToken(null);
+            } else {
+              const me = await api<User>("/auth/me");
+              setUser(me);
+            }
           }
         }
       } catch {
@@ -207,9 +269,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
+  const loginAsDemo = useCallback(async (role: "coach" | "client") => {
+    // Demo mode is session-only — no persistent token written
+    const demoUser = role === "coach" ? DEMO_COACH : DEMO_CLIENT;
+    setUser(demoUser);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, loginWithGoogle, loginWithApple, login, register, logout, refreshUser, updateUser }}
+      value={{
+        user,
+        loading,
+        loginWithGoogle,
+        loginWithApple,
+        login,
+        register,
+        loginAsDemo,
+        logout,
+        refreshUser,
+        updateUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

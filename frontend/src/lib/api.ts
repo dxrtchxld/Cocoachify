@@ -36,21 +36,29 @@ export async function api<T = any>(
   options: { method?: string; body?: unknown } = {},
 ): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`${BACKEND_URL}/api${path}`, {
-    method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const detail =
-      typeof data?.detail === "string" ? data.detail : "Request failed";
-    throw new ApiError(detail, res.status);
+  try {
+    const res = await fetch(`${BACKEND_URL}/api${path}`, {
+      method: options.method ?? "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detail =
+        typeof data?.detail === "string" ? data.detail : "Request failed";
+      throw new ApiError(detail, res.status);
+    }
+    return data as T;
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(
+      err?.message || "Backend server is currently offline or unreachable.",
+      0,
+    );
   }
-  return data as T;
 }
 
 const MIME_BY_EXT: Record<string, string> = {

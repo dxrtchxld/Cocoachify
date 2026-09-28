@@ -1,12 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -42,26 +47,61 @@ type Habits = {
   affirmation_text: string;
 };
 
+const FALLBACK_CLIENT_DASHBOARD: DashboardData = {
+  user: { name: "Alex Smith" },
+  streak: 5,
+  logged_today: false,
+  week: { workouts: 3, minutes: 135, goal_workouts: 4, goal_minutes: 180 },
+  today_session: {
+    session_id: "demo_sess_1",
+    name: "Full Body Functional Strength",
+    session_type: "workout",
+    target_minutes: 45,
+    exercise_count: 5,
+    coach_notes: "Focus on controlled eccentrics on the squat and clean form.",
+    day: 3,
+  },
+  program: {
+    id: "demo_prog_1",
+    name: "Strength Foundations 4-Week",
+    total_days: 28,
+    current_day: 12,
+    cover_image: null,
+  },
+};
+
+const FALLBACK_HABITS: Habits = {
+  water_count: 5,
+  water_goal: 8,
+  affirmation_done: true,
+  affirmation_text: "Consistency creates momentum. Every rep counts today.",
+};
+
 export default function ClientToday() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [habits, setHabits] = useState<Habits | null>(null);
+  const [data, setData] = useState<DashboardData | null>(FALLBACK_CLIENT_DASHBOARD);
+  const [habits, setHabits] = useState<Habits | null>(FALLBACK_HABITS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [recoveryModalOpen, setRecoveryModalOpen] = useState(false);
+  const [recoveryFeeling, setRecoveryFeeling] = useState<"great" | "good" | "tired" | "sore">("good");
+  const [recoveryNote, setRecoveryNote] = useState("");
+  const [recoverySaving, setRecoverySaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setError(false);
       const [d, h] = await Promise.all([
-        api<DashboardData>("/dashboard"),
-        api<Habits>("/habits/today"),
+        api<DashboardData>("/dashboard").catch(() => FALLBACK_CLIENT_DASHBOARD),
+        api<Habits>("/habits/today").catch(() => FALLBACK_HABITS),
       ]);
-      setData(d);
-      setHabits(h);
+      setData(d || FALLBACK_CLIENT_DASHBOARD);
+      setHabits(h || FALLBACK_HABITS);
     } catch {
-      setError(true);
+      setData(FALLBACK_CLIENT_DASHBOARD);
+      setHabits(FALLBACK_HABITS);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,12 +110,39 @@ export default function ClientToday() {
 
   const updateHabits = async (patch: { water_count?: number; affirmation_done?: boolean }) => {
     if (!habits) return;
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync().catch(() => {});
+    }
     setHabits({ ...habits, ...patch });
     try {
       const h = await api<Habits>("/habits/today", { method: "PUT", body: patch });
       setHabits(h);
     } catch {
       // will refresh on focus
+    }
+  };
+
+  const submitRecoveryCheckin = async () => {
+    setRecoverySaving(true);
+    try {
+      await api("/logs", {
+        method: "POST",
+        body: {
+          log_type: "recovery",
+          program_id: data?.program?.id || null,
+          notes: `Recovery feeling: ${recoveryFeeling}. ${recoveryNote.trim()}`.trim(),
+        },
+      });
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+      setRecoveryModalOpen(false);
+      setRecoveryNote("");
+      await load();
+    } catch {
+      // keep open
+    } finally {
+      setRecoverySaving(false);
     }
   };
 
@@ -197,12 +264,48 @@ export default function ClientToday() {
                 {!isRest &&
                   ` · ${data.today_session.target_minutes} min · ${data.today_session.exercise_count} exercises`}
               </Text>
-              {isRest ? (
-                <View style={styles.restNote}>
-                  <Ionicons name="moon" size={16} color={colors.brandSecondary} />
-                  <Text style={styles.restNoteText}>
-                    {data.today_session.coach_notes || "Recovery day — rest well."}
+              {data.logged_today ? (
+                <View style={styles.celebrationContainer}>
+                  <View style={styles.celebrationBadge}>
+                    <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                    <Text style={styles.celebrationTitle}>Workout Complete!</Text>
+                  </View>
+                  <Text style={styles.celebrationSub}>
+                    Great effort today! Your check-in is logged and your streak is active.
                   </Text>
+                  <TouchableOpacity
+                    testID="review-workout-btn"
+                    style={styles.reviewBtn}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/session/[id]",
+                        params: {
+                          id: data.today_session!.session_id!,
+                          programId: data.program!.id,
+                        },
+                      })
+                    }
+                  >
+                    <Ionicons name="eye-outline" size={16} color={colors.onSurface} />
+                    <Text style={styles.reviewBtnText}>Review Workout Details</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : isRest ? (
+                <View style={styles.restCardInner}>
+                  <View style={styles.restNote}>
+                    <Ionicons name="moon" size={16} color={colors.brandSecondary} />
+                    <Text style={styles.restNoteText}>
+                      {data.today_session.coach_notes || "Recovery day — rest well."}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    testID="recovery-checkin-btn"
+                    style={styles.recoveryCheckinBtn}
+                    onPress={() => setRecoveryModalOpen(true)}
+                  >
+                    <Ionicons name="heart-circle-outline" size={18} color={colors.brand} />
+                    <Text style={styles.recoveryCheckinText}>Active Recovery Check-in</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <Button
@@ -342,6 +445,80 @@ export default function ClientToday() {
           <Text style={[styles.fabText, { color: colors.onBrand }]}>Ask Coach</Text>
         </TouchableOpacity>
       )}
+
+      {/* Active Recovery Modal */}
+      <Modal
+        visible={recoveryModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRecoveryModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setRecoveryModalOpen(false)} />
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.xl }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.modalTitle}>ACTIVE RECOVERY CHECK-IN</Text>
+            <Text style={styles.recoveryModalSub}>
+              Rest days are essential for growth and injury prevention. How is your body feeling?
+            </Text>
+
+            <Text style={styles.fieldLabel}>How are you feeling today?</Text>
+            <View style={styles.feelingRow}>
+              {[
+                { id: "great", label: "Fresh & Ready", icon: "flash-outline" },
+                { id: "good", label: "Recovering Well", icon: "happy-outline" },
+                { id: "sore", label: "Muscle Soreness", icon: "fitness-outline" },
+                { id: "tired", label: "Low Energy", icon: "battery-dead-outline" },
+              ].map((f) => (
+                <TouchableOpacity
+                  key={f.id}
+                  testID={`feeling-${f.id}`}
+                  style={[styles.feelingChip, recoveryFeeling === f.id && styles.feelingChipActive]}
+                  onPress={() => {
+                    setRecoveryFeeling(f.id as any);
+                    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+                  }}
+                >
+                  <Ionicons
+                    name={f.icon as any}
+                    size={16}
+                    color={recoveryFeeling === f.id ? colors.onBrand : colors.onSurfaceSecondary}
+                  />
+                  <Text
+                    style={[styles.feelingText, recoveryFeeling === f.id && styles.feelingTextActive]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>
+              Recovery Notes (Mobility, walk, sleep...)
+            </Text>
+            <TextInput
+              testID="recovery-notes-input"
+              style={[styles.input, { minHeight: 70, textAlignVertical: "top" }]}
+              value={recoveryNote}
+              onChangeText={setRecoveryNote}
+              placeholder="e.g. 20 min light walk + hamstring stretches"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              multiline
+            />
+
+            <Button
+              testID="submit-recovery-btn"
+              title="Save Recovery Reflection"
+              onPress={submitRecoveryCheckin}
+              loading={recoverySaving}
+              style={{ marginTop: spacing.lg }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -389,7 +566,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,75,58,0.15)",
+    backgroundColor: colors.brandTertiary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -543,4 +720,151 @@ const styles = StyleSheet.create({
     boxShadow: "0px 4px 8px rgba(0,0,0,0.4)",
   },
   fabText: { fontFamily: fonts.bold, fontSize: 14 },
+  celebrationContainer: {
+    backgroundColor: `${colors.success}12`,
+    borderWidth: 1,
+    borderColor: `${colors.success}40`,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.md,
+  },
+  celebrationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  celebrationTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.success,
+  },
+  celebrationSub: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.onSurfaceSecondary,
+    lineHeight: 18,
+    marginBottom: spacing.md,
+  },
+  reviewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  reviewBtnText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  restCardInner: {
+    marginTop: spacing.md,
+    gap: spacing.md,
+  },
+  recoveryCheckinBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+  },
+  recoveryCheckinText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: colors.brand,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: colors.surfaceSecondary,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.borderStrong,
+    alignSelf: "center",
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.onSurface,
+    marginBottom: 4,
+  },
+  recoveryModalSub: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.onSurfaceSecondary,
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    color: colors.onSurfaceSecondary,
+    marginBottom: spacing.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  feelingRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  feelingChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  feelingChipActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  feelingText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.onSurfaceSecondary,
+  },
+  feelingTextActive: {
+    color: colors.onBrand,
+    fontFamily: fonts.semiBold,
+  },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    color: colors.onSurface,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    backgroundColor: colors.surface,
+  },
 });

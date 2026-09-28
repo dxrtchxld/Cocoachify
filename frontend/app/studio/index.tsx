@@ -48,6 +48,7 @@ const TILES: {
   { key: "memberships", icon: "card", title: "Memberships", sub: "Recurring plans + grace rules", href: "/studio/memberships" },
   { key: "files", icon: "folder-open", title: "Private Library", sub: "Worksheets, recordings, PDFs", href: "/studio/library" },
   { key: "assistant", icon: "sparkles", title: "Coach Assistant", sub: "Consent-based drafts for review", href: "/studio/assistant" },
+  { key: "automations", icon: "flash", title: "Automations", sub: "Trigger-action rules & workflows", href: "/studio/automations" },
 ];
 
 export default function StudioHub() {

@@ -22,10 +22,9 @@ import { useAuth } from "@/src/context/AuthContext";
 import { colors, fonts, logo, radius, spacing } from "@/src/theme";
 
 export default function Login() {
-  const { user, loginWithGoogle, loginWithApple, login, register } = useAuth();
+  const { user, loginWithGoogle, loginWithApple, login, register, loginAsDemo } = useAuth();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -145,23 +144,13 @@ export default function Login() {
             />
           )}
 
-          {!showEmail ? (
-            <TouchableOpacity
-              testID="show-email-signin"
-              onPress={() => setShowEmail(true)}
-              style={styles.emailLink}
-            >
-              <Text style={styles.emailLinkText}>Sign in with email instead</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>or with email</Text>
-                <View style={styles.divider} />
-              </View>
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or with email</Text>
+            <View style={styles.divider} />
+          </View>
 
-              {mode === "signup" && (
+          {mode === "signup" && (
                 <View style={styles.field}>
                   <Text style={styles.label}>Name</Text>
                   <TextInput
@@ -190,7 +179,20 @@ export default function Login() {
                 />
               </View>
               <View style={styles.field}>
-                <Text style={styles.label}>Password</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                  <Text style={styles.label}>Password</Text>
+                  {mode === "signin" && (
+                    <TouchableOpacity
+                      testID="forgot-password-link"
+                      onPress={() => router.push("/reset-password")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ color: colors.brand, fontSize: 13, fontFamily: fonts.medium }}>
+                        Forgot password?
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <TextInput
                   testID="password-input"
                   style={styles.input}
@@ -222,8 +224,7 @@ export default function Login() {
                   </Text>
                 </Text>
               </TouchableOpacity>
-            </>
-          )}
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -304,4 +305,28 @@ const styles = StyleSheet.create({
   toggle: { alignItems: "center", marginTop: spacing.xl, minHeight: 44, justifyContent: "center" },
   toggleText: { fontFamily: fonts.medium, fontSize: 14, color: colors.onSurfaceSecondary },
   toggleAccent: { color: colors.brand, fontFamily: fonts.bold },
+  demoSection: {
+    marginTop: spacing.md,
+    width: "100%",
+  },
+  demoButtonsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  demoBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+  },
+  demoBtnText: {
+    color: colors.onSurface,
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
+  },
 });

@@ -11,7 +11,8 @@ export type ModuleKey =
   | "landing"
   | "memberships"
   | "assistant"
-  | "files";
+  | "files"
+  | "automations";
 
 export type ModuleInfo = {
   key: ModuleKey;

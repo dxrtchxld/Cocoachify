@@ -61,7 +61,7 @@ function Meta({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: st
 
 const s = StyleSheet.create({
   hero: { height: 320, justifyContent: "space-between" },
-  image: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  image: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md },
   iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   badge: {

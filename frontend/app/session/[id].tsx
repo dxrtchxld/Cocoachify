@@ -56,6 +56,7 @@ export default function SessionScreen() {
   const [duration, setDuration] = useState("");
   const [rpe, setRpe] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  const [flagForCoach, setFlagForCoach] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [setsDone, setSetsDone] = useState<Record<number, number>>({});
@@ -94,6 +95,8 @@ export default function SessionScreen() {
           duration_minutes: parseInt(duration, 10) || 0,
           rpe,
           notes: notes.trim() || null,
+          flag_for_coach: flagForCoach,
+          discomfort: flagForCoach,
         },
       });
       if (Platform.OS !== "web") {
@@ -296,6 +299,35 @@ export default function SessionScreen() {
               multiline
             />
 
+            <TouchableOpacity
+              testID="flag-for-coach-toggle"
+              style={[styles.flagCard, flagForCoach && styles.flagCardActive]}
+              activeOpacity={0.8}
+              onPress={() => {
+                setFlagForCoach(!flagForCoach);
+                if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              }}
+            >
+              <View style={[styles.flagIcon, flagForCoach && { backgroundColor: "rgba(255,69,58,0.2)" }]}>
+                <Ionicons
+                  name={flagForCoach ? "alert-circle" : "flag-outline"}
+                  size={20}
+                  color={flagForCoach ? colors.error : colors.onSurfaceSecondary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.flagTitle, flagForCoach && { color: colors.error }]}>
+                  Flag discomfort or note for coach
+                </Text>
+                <Text style={styles.flagSub}>
+                  Highlights this session in your coach&apos;s priority inbox for review.
+                </Text>
+              </View>
+              <View style={[styles.flagCheckbox, flagForCoach && styles.flagCheckboxActive]}>
+                {flagForCoach && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+              </View>
+            </TouchableOpacity>
+
             <Button
               testID="save-log-btn"
               title="Submit Check-In"
@@ -416,4 +448,52 @@ const styles = StyleSheet.create({
   rpeChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   rpeText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurfaceSecondary },
   rpeTextActive: { color: colors.onBrand },
+  flagCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  flagCardActive: {
+    borderColor: colors.error,
+    backgroundColor: "rgba(255,69,58,0.06)",
+  },
+  flagIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flagTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13.5,
+    color: colors.onSurface,
+  },
+  flagSub: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    color: colors.onSurfaceSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  flagCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flagCheckboxActive: {
+    backgroundColor: colors.error,
+    borderColor: colors.error,
+  },
 });

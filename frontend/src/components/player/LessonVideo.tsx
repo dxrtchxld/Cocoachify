@@ -96,7 +96,6 @@ export default function LessonVideo({ uri, progressKey, poster, chapters }: Prop
           style={styles.video}
           player={player}
           nativeControls
-          allowsFullscreen
           allowsPictureInPicture={false}
           contentFit="contain"
         />
@@ -192,7 +191,7 @@ const styles = StyleSheet.create({
   },
   video: { width: "100%", height: "100%" },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,

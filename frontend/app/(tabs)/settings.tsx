@@ -3,15 +3,19 @@ import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/src/components/Button";
@@ -34,6 +38,25 @@ export default function Settings() {
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
   const [clientCount, setClientCount] = useState(0);
 
+  // Wearables
+  const [strava, setStrava] = useState<{
+    configured: boolean;
+    connected: boolean;
+    athlete_id?: number | null;
+    last_synced_at?: string | null;
+  } | null>(null);
+  const [syncingStrava, setSyncingStrava] = useState(false);
+  const [connectingStrava, setConnectingStrava] = useState(false);
+
+  // Account & Security
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   const load = useCallback(async () => {
     try {
       if (isCoach) {
@@ -43,6 +66,19 @@ export default function Settings() {
         const c = await api<{ coach: User | null; pending: { name: string; email: string } | null }>("/coach");
         setCoach(c.coach);
         setPendingCoach(c.pending ?? null);
+      }
+      try {
+        const w = await api<{
+          strava: {
+            configured: boolean;
+            connected: boolean;
+            athlete_id?: number | null;
+            last_synced_at?: string | null;
+          };
+        }>("/wearables/status");
+        setStrava(w.strava);
+      } catch {
+        // wearables optional
       }
       await refreshUser();
     } catch {
@@ -82,6 +118,145 @@ export default function Settings() {
     } finally {
       setJoining(false);
     }
+  };
+
+  const handleConnectStrava = async () => {
+    setConnectingStrava(true);
+    try {
+      const returnTo =
+        Platform.OS === "web" && typeof window !== "undefined"
+          ? window.location.origin + "/settings"
+          : "frontend://settings";
+      const res = await api<{ url: string }>(
+        `/wearables/strava/connect-url?return_to=${encodeURIComponent(returnTo)}`,
+      );
+      if (res.url) {
+        if (Platform.OS === "web") {
+          window.location.href = res.url;
+        } else {
+          await Linking.openURL(res.url);
+        }
+      }
+    } catch (e: any) {
+      Alert.alert("Strava Connection", e?.message || "Could not start Strava connection.");
+    } finally {
+      setConnectingStrava(false);
+    }
+  };
+
+  const handleSyncStrava = async () => {
+    setSyncingStrava(true);
+    try {
+      const res = await api<{ imported: number }>("/wearables/strava/sync", { method: "POST" });
+      Alert.alert("Strava Synced", `Imported ${res.imported} new activities.`);
+      await load();
+    } catch (e: any) {
+      Alert.alert("Strava Sync", e?.message || "Could not sync activities.");
+    } finally {
+      setSyncingStrava(false);
+    }
+  };
+
+  const handleDisconnectStrava = async () => {
+    Alert.alert("Disconnect Strava", "Are you sure you want to disconnect Strava?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Disconnect",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api("/wearables/strava/disconnect", { method: "POST" });
+            Alert.alert("Disconnected", "Strava has been disconnected.");
+            await load();
+          } catch (e: any) {
+            Alert.alert("Error", e?.message || "Could not disconnect Strava.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword) {
+      Alert.alert("Current password required", "Please enter your current password.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      Alert.alert("Password too short", "New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert("Passwords mismatch", "New password and confirmation do not match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api("/auth/change-password", {
+        method: "POST",
+        body: { current_password: currentPassword, new_password: newPassword },
+      });
+      Alert.alert("Success", "Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setChangePasswordOpen(false);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not change password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const data = await api<any>("/auth/me/export");
+      const json = JSON.stringify(data, null, 2);
+      await Clipboard.setStringAsync(json);
+      Alert.alert(
+        "Data Exported",
+        `Your account archive (${json.length} characters) has been copied to your clipboard.`,
+        [
+          {
+            text: "Share",
+            onPress: () => {
+              if (Platform.OS !== "web") {
+                Share.share({ message: json, title: "Co-Coachify Data Export" });
+              }
+            },
+          },
+          { text: "OK" },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert("Export Error", e?.message || "Could not export your data.");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const doDelete = async () => {
+      setDeletingAccount(true);
+      try {
+        await api("/auth/me/delete", { method: "POST" });
+        await logout();
+        router.replace("/login");
+      } catch (e: any) {
+        Alert.alert("Error", e?.message || "Could not delete account.");
+      } finally {
+        setDeletingAccount(false);
+      }
+    };
+
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to permanently delete your account? This action cannot be undone and will revoke all your sessions.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete Permanently", style: "destructive", onPress: doDelete },
+      ],
+    );
   };
 
   const confirmLogout = () => {
@@ -423,6 +598,177 @@ export default function Settings() {
           </>
         )}
 
+        {/* Connected Apps & Wearables */}
+        <Text style={styles.sectionTitle}>CONNECTED APPS & WEARABLES</Text>
+        <View style={styles.connectCard}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xs }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <View style={[styles.appIconCircle, { backgroundColor: "#FC4C02" }]}>
+                <Ionicons name="bicycle" size={18} color="#FFFFFF" />
+              </View>
+              <View>
+                <Text style={styles.rowTitle}>Strava</Text>
+                <Text style={styles.rowSub}>
+                  {strava?.connected
+                    ? strava.last_synced_at
+                      ? `Synced ${new Date(strava.last_synced_at).toLocaleDateString()}`
+                      : "Connected"
+                    : "Import rides, runs & activities"}
+                </Text>
+              </View>
+            </View>
+            {strava?.connected ? (
+              <View style={styles.connectedChip}>
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {strava?.connected ? (
+            <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+              <TouchableOpacity
+                testID="strava-sync-btn"
+                style={[styles.smallActionBtn, { backgroundColor: colors.surface }]}
+                onPress={handleSyncStrava}
+                disabled={syncingStrava}
+              >
+                {syncingStrava ? (
+                  <ActivityIndicator size="small" color={colors.brand} />
+                ) : (
+                  <>
+                    <Ionicons name="sync" size={14} color={colors.brand} />
+                    <Text style={[styles.smallActionText, { color: colors.brand }]}>Sync Now</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="strava-disconnect-btn"
+                style={[styles.smallActionBtn, { backgroundColor: colors.surface }]}
+                onPress={handleDisconnectStrava}
+              >
+                <Text style={[styles.smallActionText, { color: colors.error }]}>Disconnect</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Button
+              testID="connect-strava-btn"
+              title="Connect Strava"
+              variant="ghost"
+              onPress={handleConnectStrava}
+              loading={connectingStrava}
+              style={{ marginTop: spacing.sm }}
+            />
+          )}
+
+          <View style={styles.wearableUpcomingRow}>
+            <Ionicons name="watch-outline" size={16} color={colors.onSurfaceSecondary} />
+            <Text style={styles.wearableUpcomingText}>
+              Apple Health & Google Health Connect coming soon
+            </Text>
+          </View>
+        </View>
+
+        {/* Account & Security */}
+        <Text style={styles.sectionTitle}>ACCOUNT & SECURITY</Text>
+
+        <TouchableOpacity
+          testID="toggle-change-password-btn"
+          style={styles.row}
+          activeOpacity={0.7}
+          onPress={() => setChangePasswordOpen(!changePasswordOpen)}
+        >
+          <Ionicons name="key-outline" size={20} color={colors.brand} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Change Password</Text>
+            <Text style={styles.rowSub}>Update your account login password</Text>
+          </View>
+          <Ionicons
+            name={changePasswordOpen ? "chevron-up" : "chevron-forward"}
+            size={18}
+            color={colors.onSurfaceSecondary}
+          />
+        </TouchableOpacity>
+
+        {changePasswordOpen && (
+          <View style={styles.passwordAccordionCard}>
+            <Text style={styles.fieldLabel}>Current Password</Text>
+            <TextInput
+              testID="current-password-input"
+              style={styles.securityInput}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder="Enter current password"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              secureTextEntry
+            />
+            <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>New Password</Text>
+            <TextInput
+              testID="new-password-input"
+              style={styles.securityInput}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="Min. 8 characters"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              secureTextEntry
+            />
+            <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>Confirm New Password</Text>
+            <TextInput
+              testID="confirm-new-password-input"
+              style={styles.securityInput}
+              value={confirmNewPassword}
+              onChangeText={setConfirmNewPassword}
+              placeholder="Repeat new password"
+              placeholderTextColor={colors.onSurfaceSecondary}
+              secureTextEntry
+            />
+            <Button
+              testID="submit-change-password-btn"
+              title="Update Password"
+              onPress={handleChangePassword}
+              loading={changingPassword}
+              style={{ marginTop: spacing.md }}
+            />
+          </View>
+        )}
+
+        <TouchableOpacity
+          testID="export-data-btn"
+          style={styles.row}
+          activeOpacity={0.7}
+          onPress={handleExportData}
+          disabled={exportingData}
+        >
+          <Ionicons name="download-outline" size={20} color={colors.brand} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Export My Data</Text>
+            <Text style={styles.rowSub}>Download a copy of your personal activity and profile archive</Text>
+          </View>
+          {exportingData ? (
+            <ActivityIndicator size="small" color={colors.brand} />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          testID="delete-account-btn"
+          style={styles.row}
+          activeOpacity={0.7}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.error} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowTitle, { color: colors.error }]}>Delete Account</Text>
+            <Text style={styles.rowSub}>Deactivate your account and delete your session data</Text>
+          </View>
+          {deletingAccount ? (
+            <ActivityIndicator size="small" color={colors.error} />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={colors.error} />
+          )}
+        </TouchableOpacity>
+
         {/* About */}
         <Text style={styles.sectionTitle}>ABOUT</Text>
         <View style={styles.row}>
@@ -591,4 +937,66 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   specText: { fontFamily: fonts.semiBold, fontSize: 12.5, color: colors.onSurfaceSecondary },
+  appIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  smallActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  smallActionText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12.5,
+  },
+  wearableUpcomingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  wearableUpcomingText: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.onSurfaceSecondary,
+  },
+  passwordAccordionCard: {
+    marginHorizontal: spacing.xl,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  fieldLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11.5,
+    color: colors.onSurfaceSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  securityInput: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    color: colors.onSurface,
+    backgroundColor: colors.surface,
+    marginTop: 4,
+    fontSize: 14,
+  },
 });

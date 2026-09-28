@@ -11,13 +11,15 @@ router = APIRouter(tags=["logs"])
 
 
 class LogCreate(BaseModel):
-    log_type: str = Field(default="workout", pattern="^(workout|body)$")
+    log_type: str = Field(default="workout", pattern="^(workout|body|recovery)$")
     session_id: str | None = None
     program_id: str | None = None
     duration_minutes: int | None = Field(default=None, ge=0, le=600)
     rpe: int | None = Field(default=None, ge=1, le=10)
     weight: float | None = Field(default=None, ge=0, le=1000)
     notes: str | None = Field(default=None, max_length=1000)
+    flag_for_coach: bool = False
+    discomfort: bool = False
 
 
 @router.post("/logs", status_code=201)
@@ -31,6 +33,8 @@ async def create_log(body: LogCreate, user: dict = Depends(get_current_user)):
     if body.session_id:
         session = await db.coaching_sessions.find_one({"id": body.session_id}, {"_id": 0, "name": 1})
         session_name = session["name"] if session else None
+    elif body.log_type == "recovery":
+        session_name = "Active Recovery Check-in"
 
     log = {
         "id": f"log_{uuid.uuid4().hex[:12]}",
@@ -43,6 +47,8 @@ async def create_log(body: LogCreate, user: dict = Depends(get_current_user)):
         "rpe": body.rpe,
         "weight": body.weight,
         "notes": body.notes,
+        "flag_for_coach": bool(body.flag_for_coach or body.discomfort),
+        "discomfort": bool(body.discomfort),
         "date": datetime.now(timezone.utc),
     }
     await db.client_logs.insert_one(dict(log))

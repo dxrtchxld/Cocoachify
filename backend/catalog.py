@@ -156,7 +156,7 @@ DOMAINS: list[dict] = [
      "approaches": ["strengths_based", "positive_psychology", "person_centered"],
      "models": ["smart", "after_action_review"],
      "exclusions": ["Psychometric interpretation without qualification"],
-     "escalation": ["Assessment-qualified practitioner", "Mentor"],
+     "escalation": ["Assessment-qualified specialist", "Mentor"],
      "intake": ["Which skill do you want to be visibly better at?", "How would others notice the change?"],
      "checkin": ["What did you practise?", "What evidence of progress did you see?", "Confidence 1-10"]},
     {"key": "purpose", "group": "personal", "label": "Purpose and meaning coaching",

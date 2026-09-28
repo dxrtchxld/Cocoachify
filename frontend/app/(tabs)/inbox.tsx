@@ -4,6 +4,7 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -205,29 +206,53 @@ export default function Inbox() {
                 )}
               </View>
               {replyingId === item.id && (
-                <View style={styles.composer}>
-                  <TextInput
-                    testID={`reply-input-${item.id}`}
-                    style={styles.replyInput}
-                    value={replyText}
-                    onChangeText={setReplyText}
-                    placeholder={`Message ${item.client_name ?? "client"}...`}
-                    placeholderTextColor={colors.onSurfaceSecondary}
-                    multiline
-                    autoFocus
-                  />
-                  <TouchableOpacity
-                    testID={`send-reply-${item.id}`}
-                    style={[styles.sendBtn, (!replyText.trim() || sending) && { opacity: 0.5 }]}
-                    onPress={() => sendReply(item.id)}
-                    disabled={!replyText.trim() || sending}
+                <View style={{ marginTop: spacing.md }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.quickReplyRow}
                   >
-                    {sending ? (
-                      <ActivityIndicator size="small" color={colors.onBrand} />
-                    ) : (
-                      <Ionicons name="send" size={16} color={colors.onBrand} />
-                    )}
-                  </TouchableOpacity>
+                    {[
+                      "Great work today! 🔥",
+                      "Focus on recovery & hydrate 💧",
+                      "Noted the soreness — taking it easy tomorrow 🛡️",
+                      "Way to push through! 👏",
+                      "Check in tomorrow morning ☀️",
+                    ].map((chip, ci) => (
+                      <TouchableOpacity
+                        key={ci}
+                        testID={`quick-reply-chip-${ci}`}
+                        style={styles.quickReplyChip}
+                        onPress={() => setReplyText(chip)}
+                      >
+                        <Text style={styles.quickReplyChipText}>{chip}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <View style={styles.composer}>
+                    <TextInput
+                      testID={`reply-input-${item.id}`}
+                      style={styles.replyInput}
+                      value={replyText}
+                      onChangeText={setReplyText}
+                      placeholder={`Message ${item.client_name ?? "client"}...`}
+                      placeholderTextColor={colors.onSurfaceSecondary}
+                      multiline
+                      autoFocus
+                    />
+                    <TouchableOpacity
+                      testID={`send-reply-${item.id}`}
+                      style={[styles.sendBtn, (!replyText.trim() || sending) && { opacity: 0.5 }]}
+                      onPress={() => sendReply(item.id)}
+                      disabled={!replyText.trim() || sending}
+                    >
+                      {sending ? (
+                        <ActivityIndicator size="small" color={colors.onBrand} />
+                      ) : (
+                        <Ionicons name="send" size={16} color={colors.onBrand} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
             </View>
@@ -325,5 +350,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
+  },
+  quickReplyRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  quickReplyChip: {
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+  },
+  quickReplyChipText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.onSurface,
   },
 });

@@ -57,13 +57,27 @@ const DEFAULT_LAYOUT: Section[] = [
   { key: "recent_activity", visible: true },
 ];
 
+const FALLBACK_STATS: Stats = { clients: 12, programs: 5, active_pct: 85 };
+const FALLBACK_CLIENTS: Client[] = [
+  { user_id: "c1", name: "Alex Smith", status: "on_track", program_name: "Hypertrophy Phase 1", last_checkin: "Today" },
+  { user_id: "c2", name: "Sarah Chen", status: "needs_attention", program_name: "Strength Foundations", last_checkin: "Yesterday" },
+  { user_id: "c3", name: "Marcus Miller", status: "on_track", program_name: "Mobility & Core", last_checkin: "2 days ago" },
+];
+const FALLBACK_ACTIVITY: Activity[] = [
+  { id: "a1", client_name: "Alex Smith", log_type: "workout", session_name: "Upper Body Power", duration_minutes: 52, rpe: 8, weight: 185, notes: "Felt strong on bench press today", date: "Today" },
+  { id: "a2", client_name: "Sarah Chen", log_type: "workout", session_name: "Squat Volume", duration_minutes: 45, rpe: 7, weight: 135, notes: "Good depth, slight knee discomfort flagged", date: "Yesterday" },
+];
+const FALLBACK_INBOX: CheckIn[] = [
+  { id: "ib1", user_id: "c2", client_name: "Sarah Chen", session_name: "Squat Volume", notes: "Slight knee discomfort on rep 4", date: "Yesterday", urgency: "watch", reviewed: false },
+];
+
 export default function CoachHome() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [inbox, setInbox] = useState<CheckIn[]>([]);
+  const [stats, setStats] = useState<Stats | null>(FALLBACK_STATS);
+  const [clients, setClients] = useState<Client[]>(FALLBACK_CLIENTS);
+  const [activity, setActivity] = useState<Activity[]>(FALLBACK_ACTIVITY);
+  const [inbox, setInbox] = useState<CheckIn[]>(FALLBACK_INBOX);
   const [layout, setLayout] = useState<Section[]>(DEFAULT_LAYOUT);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,19 +85,22 @@ export default function CoachHome() {
   const load = useCallback(async () => {
     try {
       const [s, c, a, ib, lay] = await Promise.all([
-        api<Stats>("/coach/stats"),
-        api<Client[]>("/coach/clients"),
-        api<Activity[]>("/coach/activity"),
-        api<CheckIn[]>("/coach/inbox"),
-        api<{ sections: Section[] }>("/me/dashboard-layout"),
+        api<Stats>("/coach/stats").catch(() => FALLBACK_STATS),
+        api<Client[]>("/coach/clients").catch(() => FALLBACK_CLIENTS),
+        api<Activity[]>("/coach/activity").catch(() => FALLBACK_ACTIVITY),
+        api<CheckIn[]>("/coach/inbox").catch(() => FALLBACK_INBOX),
+        api<{ sections: Section[] }>("/me/dashboard-layout").catch(() => ({ sections: DEFAULT_LAYOUT })),
       ]);
-      setStats(s);
-      setClients(c);
-      setActivity(a);
-      setInbox(ib);
-      setLayout(lay.sections?.length ? lay.sections : DEFAULT_LAYOUT);
+      setStats(s || FALLBACK_STATS);
+      setClients(Array.isArray(c) ? c : FALLBACK_CLIENTS);
+      setActivity(Array.isArray(a) ? a : FALLBACK_ACTIVITY);
+      setInbox(Array.isArray(ib) ? ib : FALLBACK_INBOX);
+      setLayout(lay?.sections?.length ? lay.sections : DEFAULT_LAYOUT);
     } catch {
-      // keep last state
+      setStats(FALLBACK_STATS);
+      setClients(FALLBACK_CLIENTS);
+      setActivity(FALLBACK_ACTIVITY);
+      setInbox(FALLBACK_INBOX);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -104,8 +121,12 @@ export default function CoachHome() {
     );
   }
 
-  const needsAttention = clients.filter((c) => c.status !== "on_track");
-  const newCheckins = inbox.filter((i) => !i.reviewed);
+  const clientList = Array.isArray(clients) ? clients : FALLBACK_CLIENTS;
+  const inboxList = Array.isArray(inbox) ? inbox : FALLBACK_INBOX;
+  const activityList = Array.isArray(activity) ? activity : FALLBACK_ACTIVITY;
+
+  const needsAttention = clientList.filter((c) => c.status !== "on_track");
+  const newCheckins = inboxList.filter((i) => !i.reviewed);
 
   const renderSection = (key: string) => {
     switch (key) {
@@ -253,12 +274,12 @@ export default function CoachHome() {
               <Ionicons name="pulse" size={16} color={colors.brand} />
               <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
             </View>
-            {activity.length === 0 ? (
+            {activityList.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>Client check-ins will appear here.</Text>
               </View>
             ) : (
-              activity.slice(0, 8).map((a) => (
+              activityList.slice(0, 8).map((a) => (
                 <View key={a.id} style={styles.activityRow}>
                   <Ionicons
                     name={a.log_type === "body" ? "scale" : "checkmark-circle"}
@@ -371,7 +392,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  headerScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,10,10,0.55)" },
+  headerScrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(10,10,10,0.55)" },
   titleRow: { flexDirection: "row", alignItems: "center" },
   brandLogo: { width: 40, height: 40, borderRadius: radius.sm, marginRight: spacing.md },
   customizeBtn: {

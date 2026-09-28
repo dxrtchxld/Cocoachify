@@ -98,8 +98,8 @@ function Line({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: stri
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  bg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,10,10,0.55)" },
+  bg: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(10,10,10,0.55)" },
   content: { flex: 1, justifyContent: "space-between", padding: spacing.xl },
   logoWrap: { alignItems: "flex-start" },
   brandLogo: { width: 150, height: 60 },

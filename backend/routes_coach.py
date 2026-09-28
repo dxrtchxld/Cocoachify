@@ -211,7 +211,8 @@ async def inbox(user: dict = Depends(get_current_user)):
     for l in logs:
         notes = (l.get("notes") or "").lower()
         rpe = l.get("rpe") or 0
-        if rpe >= 9 or any(w in notes for w in urgent_words):
+        flagged = bool(l.get("flag_for_coach") or l.get("discomfort"))
+        if flagged or rpe >= 9 or any(w in notes for w in urgent_words):
             urgency = "urgent"
         elif rpe >= 8:
             urgency = "watch"
