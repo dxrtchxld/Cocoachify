@@ -39,7 +39,7 @@ export default function PlayerHero({
         </View>
       </View>
       <View style={s.bottom}>
-        <Text style={s.title}>{title}</Text>
+        <Text style={s.title} numberOfLines={3}>{title}</Text>
         <View style={s.metaRow}>
           {minutes > 0 ? <Meta icon="time-outline" label={`${minutes} min`} /> : null}
           <Meta icon="barbell-outline" label={`${exerciseCount} moves`} />
@@ -78,7 +78,7 @@ const s = StyleSheet.create({
   },
   badgeText: { fontFamily: fonts.bold, fontSize: 10, color: colors.onSurfaceTertiary, letterSpacing: 1.2 },
   bottom: { padding: spacing.xl, gap: spacing.md },
-  title: { fontFamily: fonts.displayBold, fontSize: 32, lineHeight: 36, color: colors.onSurface },
+  title: { fontFamily: fonts.displayBold, fontSize: 28, lineHeight: 34, color: colors.onSurface },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   meta: {
     flexDirection: "row",

@@ -144,7 +144,7 @@ export default function Inbox() {
           renderItem={({ item }) => (
             <View style={[styles.card, !item.reviewed && styles.cardNew]}>
               <View style={styles.cardTop}>
-                <Text style={styles.clientName}>{item.client_name}</Text>
+                <Text style={styles.clientName} numberOfLines={1}>{item.client_name}</Text>
                 {item.urgency !== "normal" && (
                   <View
                     style={[
@@ -166,16 +166,16 @@ export default function Inbox() {
                 )}
                 <Text style={styles.date}>{formatDate(item.date)}</Text>
               </View>
-              <Text style={styles.sessionLine}>
+              <Text style={styles.sessionLine} numberOfLines={1}>
                 {item.session_name ?? "Workout"}
                 {item.duration_minutes ? ` · ${item.duration_minutes} min` : ""}
                 {item.rpe ? ` · RPE ${item.rpe}` : ""}
               </Text>
-              {item.notes ? <Text style={styles.notes}>&ldquo;{item.notes}&rdquo;</Text> : null}
+              {item.notes ? <Text style={styles.notes} numberOfLines={3}>&ldquo;{item.notes}&rdquo;</Text> : null}
               {item.coach_reply ? (
                 <View style={styles.replyPreview}>
                   <Ionicons name="return-down-forward" size={14} color={colors.success} />
-                  <Text style={styles.replyPreviewText}>You replied: {item.coach_reply}</Text>
+                  <Text style={styles.replyPreviewText} numberOfLines={2}>You replied: {item.coach_reply}</Text>
                 </View>
               ) : null}
               <View style={styles.actions}>

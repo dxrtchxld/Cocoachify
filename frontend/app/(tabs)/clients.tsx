@@ -189,16 +189,16 @@ export default function Clients() {
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{(item.name || "C")[0].toUpperCase()}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.subText}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.subText} numberOfLines={1}>
                     {item.program_name
                       ? `${item.program_name} · Day ${item.current_day}/${item.total_days}`
                       : "No active program"}
                   </Text>
                 </View>
-                <View style={[styles.statusChip, { backgroundColor: s.bg }]}>
-                  <Text style={[styles.statusText, { color: s.color }]}>{s.label}</Text>
+                <View style={[styles.statusChip, { backgroundColor: s.bg, flexShrink: 0 }]}>
+                  <Text style={[styles.statusText, { color: s.color }]} numberOfLines={1}>{s.label}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -302,8 +302,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { fontFamily: fonts.bold, fontSize: 16, color: colors.onSurfaceTertiary },
-  name: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurface },
+  name: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurface, flexShrink: 1 },
   subText: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 1 },
-  statusChip: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill },
+  statusChip: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, flexShrink: 0 },
   statusText: { fontFamily: fonts.bold, fontSize: 10.5 },
 });

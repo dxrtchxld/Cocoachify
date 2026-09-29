@@ -128,16 +128,16 @@ export default function Progress() {
           <>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>{summary?.totals.total_workouts ?? 0}</Text>
-                <Text style={styles.statLabel}>Total workouts</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{summary?.totals.total_workouts ?? 0}</Text>
+                <Text style={styles.statLabel} numberOfLines={2}>Total workouts</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>{summary?.totals.total_minutes ?? 0}</Text>
-                <Text style={styles.statLabel}>Total minutes</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{summary?.totals.total_minutes ?? 0}</Text>
+                <Text style={styles.statLabel} numberOfLines={2}>Total minutes</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>{summary?.totals.week_workouts ?? 0}</Text>
-                <Text style={styles.statLabel}>This week</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{summary?.totals.week_workouts ?? 0}</Text>
+                <Text style={styles.statLabel} numberOfLines={2}>This week</Text>
               </View>
             </View>
 
@@ -160,14 +160,14 @@ export default function Progress() {
             ) : (
               workoutLogs.map((l) => (
                 <View key={l.id} style={styles.logRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.logName}>{l.session_name ?? "Workout"}</Text>
-                    <Text style={styles.logMeta}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.logName} numberOfLines={1}>{l.session_name ?? "Workout"}</Text>
+                    <Text style={styles.logMeta} numberOfLines={1}>
                       {formatDate(l.date)}
                       {l.duration_minutes ? ` · ${l.duration_minutes} min` : ""}
                       {l.rpe ? ` · RPE ${l.rpe}` : ""}
                     </Text>
-                    {l.notes ? <Text style={styles.logNotes}>{l.notes}</Text> : null}
+                    {l.notes ? <Text style={styles.logNotes} numberOfLines={2}>{l.notes}</Text> : null}
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                 </View>
@@ -212,9 +212,9 @@ export default function Progress() {
             ) : (
               bodyLogs.map((l) => (
                 <View key={l.id} style={styles.logRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.logName}>{l.weight} kg</Text>
-                    <Text style={styles.logMeta}>{formatDate(l.date)}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.logName} numberOfLines={1}>{l.weight} kg</Text>
+                    <Text style={styles.logMeta} numberOfLines={1}>{formatDate(l.date)}</Text>
                   </View>
                   <Ionicons name="trending-up" size={18} color={colors.brand} />
                 </View>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statValue: { fontFamily: fonts.displayBold, fontSize: 22, color: colors.onSurface },
-  statLabel: { fontFamily: fonts.medium, fontSize: 10, color: colors.onSurfaceSecondary, marginTop: 2, textAlign: "center" },
+  statLabel: { fontFamily: fonts.medium, fontSize: 10, color: colors.onSurfaceSecondary, marginTop: 2, textAlign: "center", lineHeight: 14 },
   chartCard: {
     backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,

@@ -291,9 +291,9 @@ export default function Settings() {
               <Text style={styles.avatarInitial}>{(user?.name || "U")[0].toUpperCase()}</Text>
             </View>
           )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>{user?.name}</Text>
-            <Text style={styles.profileEmail}>{user?.email}</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.profileName} numberOfLines={1}>{user?.name}</Text>
+            <Text style={styles.profileEmail} numberOfLines={1}>{user?.email}</Text>
             <Text style={styles.roleText}>{isCoach ? "COACH" : "CLIENT"}</Text>
           </View>
           {user?.is_premium && (
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   rowTitle: { fontFamily: fonts.semiBold, fontSize: 15, color: colors.onSurface },
-  rowSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 1 },
+  rowSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 1, lineHeight: 17 },
   connectedChip: {
     backgroundColor: "rgba(50,215,75,0.12)",
     paddingHorizontal: spacing.md,

@@ -126,8 +126,8 @@ export function StatTile({
 }) {
   return (
     <View testID={testID} style={s.stat}>
-      <Text style={s.statValue}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+      <Text style={s.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
+      <Text style={s.statLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -159,9 +159,9 @@ export function Row({
           <Ionicons name={icon} size={18} color={colors.brand} />
         </View>
       ) : null}
-      <View style={{ flex: 1 }}>
-        <Text style={s.rowTitle}>{title}</Text>
-        {subtitle ? <Text style={s.rowSub}>{subtitle}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={s.rowTitle} numberOfLines={1}>{title}</Text>
+        {subtitle ? <Text style={s.rowSub} numberOfLines={2}>{subtitle}</Text> : null}
       </View>
       {right ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceSecondary} /> : null)}
     </TouchableOpacity>
@@ -347,7 +347,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   rowTitle: { fontFamily: fonts.semiBold, fontSize: 14.5, color: colors.onSurface },
-  rowSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 2 },
+  rowSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 2, lineHeight: 17 },
   empty: { alignItems: "center", justifyContent: "center", gap: spacing.sm, padding: spacing.xxl },
   emptyTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.onSurface, textAlign: "center" },
   emptyBody: {

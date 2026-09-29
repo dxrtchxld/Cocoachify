@@ -196,13 +196,13 @@ export default function ClientToday() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{greeting()},</Text>
-            <Text style={styles.userName}>{data.user.name || user?.name}</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.greeting} numberOfLines={1}>{greeting()},</Text>
+            <Text style={styles.userName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{data.user.name || user?.name}</Text>
           </View>
           <View style={styles.streakBadge}>
             <Ionicons name="flame" size={18} color={colors.brand} />
-            <Text style={styles.streakText}>{data.streak} Day Streak</Text>
+            <Text style={styles.streakText} numberOfLines={1}>{data.streak} Day Streak</Text>
           </View>
         </View>
 
@@ -258,8 +258,8 @@ export default function ClientToday() {
                   DAY {data.program.current_day} / {data.program.total_days}
                 </Text>
               </View>
-              <Text style={styles.planSession}>{data.today_session.name}</Text>
-              <Text style={styles.planMeta}>
+              <Text style={styles.planSession} numberOfLines={2}>{data.today_session.name}</Text>
+              <Text style={styles.planMeta} numberOfLines={2}>
                 {data.program.name}
                 {!isRest &&
                   ` · ${data.today_session.target_minutes} min · ${data.today_session.exercise_count} exercises`}
@@ -408,7 +408,7 @@ export default function ClientToday() {
             activeOpacity={0.8}
           >
             <Ionicons name="compass" size={22} color={colors.brand} />
-            <Text style={styles.quickText}>My Journey</Text>
+            <Text style={styles.quickText} numberOfLines={2}>My Journey</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickCard}
@@ -416,7 +416,7 @@ export default function ClientToday() {
             activeOpacity={0.8}
           >
             <Ionicons name="trending-up" size={22} color={colors.brand} />
-            <Text style={styles.quickText}>Log body weight</Text>
+            <Text style={styles.quickText} numberOfLines={2}>Log body weight</Text>
           </TouchableOpacity>
           {data.program && (
             <TouchableOpacity
@@ -427,7 +427,7 @@ export default function ClientToday() {
               activeOpacity={0.8}
             >
               <Ionicons name="calendar" size={22} color={colors.brand} />
-              <Text style={styles.quickText}>View full program</Text>
+              <Text style={styles.quickText} numberOfLines={2}>View full program</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   greeting: { fontFamily: fonts.medium, fontSize: 14, color: colors.onSurfaceSecondary },
-  userName: { fontFamily: fonts.displayBold, fontSize: 28, color: colors.onSurface, letterSpacing: 0.5 },
+  userName: { fontFamily: fonts.displayBold, fontSize: 28, color: colors.onSurface, letterSpacing: 0.5, flexShrink: 1 },
   streakBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -549,6 +549,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
+    flexShrink: 0,
+    marginLeft: spacing.sm,
   },
   streakText: { fontFamily: fonts.bold, fontSize: 12, color: colors.onBrandTertiary },
   connectCard: {
@@ -610,9 +612,10 @@ const styles = StyleSheet.create({
   dayChipText: { fontFamily: fonts.bold, fontSize: 11, color: colors.onBrand, letterSpacing: 1 },
   planSession: {
     fontFamily: fonts.displayBold,
-    fontSize: 26,
+    fontSize: 24,
     color: colors.onSurface,
     marginTop: spacing.sm,
+    lineHeight: 30,
   },
   planMeta: { fontFamily: fonts.medium, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 4 },
   restNote: {
@@ -675,7 +678,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     justifyContent: "center",
   },
-  quickText: { fontFamily: fonts.semiBold, fontSize: 12, color: colors.onSurface },
+  quickText: { fontFamily: fonts.semiBold, fontSize: 12, color: colors.onSurface, textAlign: "center" },
   habitsRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl },
   habitCard: {
     flex: 1,

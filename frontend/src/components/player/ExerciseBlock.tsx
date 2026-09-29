@@ -113,8 +113,8 @@ export default function ExerciseBlock({
           )}
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[s.name, complete && s.nameDone]}>{exercise.name}</Text>
-          {scheme ? <Text style={s.scheme}>{scheme}</Text> : null}
+          <Text style={[s.name, complete && s.nameDone]} numberOfLines={2}>{exercise.name}</Text>
+          {scheme ? <Text style={s.scheme} numberOfLines={1}>{scheme}</Text> : null}
         </View>
         <TouchableOpacity
           testID={`exercise-ai-guide-${number}`}

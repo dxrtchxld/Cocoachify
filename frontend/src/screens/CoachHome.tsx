@@ -135,18 +135,18 @@ export default function CoachHome() {
           <View key={key} style={styles.statsRow}>
             <View style={styles.statCard}>
               <Ionicons name="people" size={20} color={colors.brand} />
-              <Text style={styles.statValue}>{stats?.clients ?? 0}</Text>
-              <Text style={styles.statLabel}>CLIENTS</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stats?.clients ?? 0}</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>CLIENTS</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="albums" size={20} color={colors.brand} />
-              <Text style={styles.statValue}>{stats?.programs ?? 0}</Text>
-              <Text style={styles.statLabel}>PROGRAMS</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stats?.programs ?? 0}</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>PROGRAMS</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="sparkles" size={20} color={colors.brand} />
-              <Text style={styles.statValue}>{stats?.active_pct ?? 0}%</Text>
-              <Text style={styles.statLabel}>ACTIVE</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stats?.active_pct ?? 0}%</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>ACTIVE</Text>
             </View>
           </View>
         );
@@ -160,7 +160,7 @@ export default function CoachHome() {
               onPress={() => router.push("/invite")}
             >
               <Ionicons name="qr-code" size={20} color={colors.brand} />
-              <Text style={styles.quickText}>Invite Client</Text>
+              <Text style={styles.quickText} numberOfLines={2}>Invite Client</Text>
             </TouchableOpacity>
             <TouchableOpacity
               testID="quick-new-program"
@@ -169,7 +169,7 @@ export default function CoachHome() {
               onPress={() => router.push("/program-editor")}
             >
               <Ionicons name="add-circle" size={20} color={colors.brand} />
-              <Text style={styles.quickText}>New Program</Text>
+              <Text style={styles.quickText} numberOfLines={2}>New Program</Text>
             </TouchableOpacity>
             <TouchableOpacity
               testID="quick-library"
@@ -178,7 +178,7 @@ export default function CoachHome() {
               onPress={() => router.push("/exercise-library")}
             >
               <Ionicons name="barbell" size={20} color={colors.brand} />
-              <Text style={styles.quickText}>Exercise Library</Text>
+              <Text style={styles.quickText} numberOfLines={2}>Exercise Library</Text>
             </TouchableOpacity>
             <TouchableOpacity
               testID="quick-studio"
@@ -187,7 +187,7 @@ export default function CoachHome() {
               onPress={() => router.push("/studio")}
             >
               <Ionicons name="grid" size={20} color={colors.brand} />
-              <Text style={styles.quickText}>Workspace</Text>
+              <Text style={styles.quickText} numberOfLines={2}>Workspace</Text>
             </TouchableOpacity>
           </View>
         );
@@ -214,9 +214,9 @@ export default function CoachHome() {
                   <View style={styles.miniAvatar}>
                     <Text style={styles.miniAvatarText}>{(c.name || "C")[0].toUpperCase()}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.clientName}>{c.name}</Text>
-                    <Text style={styles.clientSub}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.clientName} numberOfLines={1}>{c.name}</Text>
+                    <Text style={styles.clientSub} numberOfLines={1}>
                       {c.status === "no_program" ? "No active program" : "No recent check-ins"}
                     </Text>
                   </View>
@@ -255,13 +255,13 @@ export default function CoachHome() {
                     size={18}
                     color={i.urgency === "urgent" ? colors.error : colors.brand}
                   />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.clientName}>{i.client_name}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.clientName} numberOfLines={1}>{i.client_name}</Text>
                     <Text style={styles.clientSub} numberOfLines={1}>
                       {i.notes || i.session_name || "Completed a check-in"}
                     </Text>
                   </View>
-                  <Text style={styles.activityDate}>{formatDate(i.date)}</Text>
+                  <Text style={styles.activityDate} numberOfLines={1}>{formatDate(i.date)}</Text>
                 </TouchableOpacity>
               ))
             )}
@@ -286,17 +286,17 @@ export default function CoachHome() {
                     size={18}
                     color={colors.success}
                   />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.activityText}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.activityText} numberOfLines={2}>
                       <Text style={{ fontFamily: fonts.bold }}>{a.client_name}</Text>
                       {a.log_type === "body"
                         ? ` logged ${a.weight} kg`
                         : ` completed ${a.session_name ?? "a workout"}`}
                       {a.rpe ? ` · RPE ${a.rpe}` : ""}
                     </Text>
-                    {a.notes ? <Text style={styles.activityNotes}>&ldquo;{a.notes}&rdquo;</Text> : null}
+                    {a.notes ? <Text style={styles.activityNotes} numberOfLines={1}>&ldquo;{a.notes}&rdquo;</Text> : null}
                   </View>
-                  <Text style={styles.activityDate}>{formatDate(a.date)}</Text>
+                  <Text style={styles.activityDate} numberOfLines={1}>{formatDate(a.date)}</Text>
                 </View>
               ))
             )}
@@ -333,17 +333,17 @@ export default function CoachHome() {
             {mediaUrl(user?.brand_logo) ? (
               <Image source={{ uri: mediaUrl(user?.brand_logo)! }} style={styles.brandLogo} contentFit="contain" />
             ) : null}
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <View style={styles.titleRow}>
                 <Ionicons name={vocabFor(user?.coach_specialty).icon as any} size={16} color={colors.brand} />
-                <Text style={styles.title}>
+                <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {" "}
                   {user?.brand_tagline?.trim()
                     ? user.brand_tagline
                     : `${user?.coach_specialty ? `${user.coach_specialty.toUpperCase()} ` : ""}${vocabFor(user?.coach_specialty).homeTitle}`}
                 </Text>
               </View>
-              <Text style={styles.sub}>
+              <Text style={styles.sub} numberOfLines={2}>
                 Today&apos;s triage — which {vocabFor(user?.coach_specialty).clientWord} need you first.
               </Text>
             </View>
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   headerScrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(10,10,10,0.55)" },
-  titleRow: { flexDirection: "row", alignItems: "center" },
+  titleRow: { flexDirection: "row", alignItems: "center", flexShrink: 1 },
   brandLogo: { width: 40, height: 40, borderRadius: radius.sm, marginRight: spacing.md },
   customizeBtn: {
     width: 40,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: spacing.md,
   },
-  title: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface, letterSpacing: 1 },
+  title: { fontFamily: fonts.displayBold, fontSize: 24, color: colors.onSurface, letterSpacing: 1, flexShrink: 1 },
   sub: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 4 },
   statsRow: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl },
   statCard: {
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   miniAvatarText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurfaceTertiary },
-  clientName: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurface },
+  clientName: { fontFamily: fonts.bold, fontSize: 15, color: colors.onSurface, flexShrink: 1 },
   clientSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.onSurfaceSecondary, marginTop: 1 },
   statusChip: { paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.pill },
   chipBehind: { backgroundColor: "rgba(255,214,10,0.15)" },

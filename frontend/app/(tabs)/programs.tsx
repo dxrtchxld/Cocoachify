@@ -121,7 +121,7 @@ export default function Programs() {
             onPress={() => setCategory(c)}
           >
             <Text style={[styles.catText, category === c && styles.catTextActive]}>
-            {c === "all" ? "All" : capitalize(c)}
+              {c === "all" ? "All" : capitalize(c)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -184,7 +184,7 @@ export default function Programs() {
                 </View>
                 <View style={styles.cardBottom}>
                   <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.cardMeta}>
+                  <Text style={styles.cardMeta} numberOfLines={1}>
                     {capitalize(item.difficulty)}  ·  {item.days_per_week}×/week  ·  {item.session_count} sessions
                   </Text>
                 </View>
@@ -282,6 +282,6 @@ const styles = StyleSheet.create({
   },
   daysChipText: { fontFamily: fonts.bold, fontSize: 11, color: "#FFFFFF" },
   cardBottom: {},
-  cardTitle: { fontFamily: fonts.displayBold, fontSize: 24, color: "#FFFFFF", lineHeight: 27 },
+  cardTitle: { fontFamily: fonts.displayBold, fontSize: 22, color: "#FFFFFF", lineHeight: 26 },
   cardMeta: { fontFamily: fonts.semiBold, fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 6 },
 });
