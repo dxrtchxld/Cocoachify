@@ -112,7 +112,7 @@ export default function ExerciseBlock({
             <Text style={s.checkNum}>{number}</Text>
           )}
         </TouchableOpacity>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[s.name, complete && s.nameDone]} numberOfLines={2}>{exercise.name}</Text>
           {scheme ? <Text style={s.scheme} numberOfLines={1}>{scheme}</Text> : null}
         </View>
@@ -202,9 +202,9 @@ const s = StyleSheet.create({
   },
   checkDone: { backgroundColor: colors.brand, borderColor: colors.brand },
   checkNum: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.onSurfaceSecondary },
-  name: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.onSurface, letterSpacing: 0.2 },
+  name: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.onSurface, letterSpacing: 0.2, lineHeight: 24 },
   nameDone: { color: colors.onSurfaceTertiary },
-  scheme: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.brandSecondary, marginTop: 3, letterSpacing: 0.3 },
+  scheme: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.brandSecondary, marginTop: 3, letterSpacing: 0.3, lineHeight: 18 },
   aiBtn: {
     width: 40,
     height: 40,

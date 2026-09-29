@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   emptyTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.onSurface, marginTop: spacing.md },
   card: {
-    height: 200,
+    minHeight: 200,
     borderRadius: radius.xl,
     overflow: "hidden",
     backgroundColor: colors.surfaceSecondary,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   daysChipText: { fontFamily: fonts.bold, fontSize: 11, color: "#FFFFFF" },
-  cardBottom: {},
-  cardTitle: { fontFamily: fonts.displayBold, fontSize: 22, color: "#FFFFFF", lineHeight: 26 },
-  cardMeta: { fontFamily: fonts.semiBold, fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 6 },
+  cardBottom: { minWidth: 0, flexShrink: 1 },
+  cardTitle: { fontFamily: fonts.displayBold, fontSize: 20, color: "#FFFFFF", lineHeight: 24 },
+  cardMeta: { fontFamily: fonts.semiBold, fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 6, lineHeight: 16 },
 });

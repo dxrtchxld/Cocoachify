@@ -191,10 +191,10 @@ export default function SessionScreen() {
           <View key={gi} style={styles.blockGroup}>
             {group.label ? (
               <View style={styles.blockLabelChip}>
-                <Text style={styles.blockLabelText}>{group.label.toUpperCase()}</Text>
+                <Text style={styles.blockLabelText} numberOfLines={1}>{group.label.toUpperCase()}</Text>
               </View>
             ) : session.exercises.length > 0 ? (
-              <Text style={styles.blockTitle}>THE WORK</Text>
+              <Text style={styles.blockTitle} numberOfLines={1}>THE WORK</Text>
             ) : null}
             {group.items.map(({ ex, index }, ei) => (
               <ExerciseBlock
@@ -371,9 +371,9 @@ const styles = StyleSheet.create({
   noteTitle: { fontFamily: fonts.bold, fontSize: 11, color: colors.onBrandTertiary, letterSpacing: 1 },
   noteBody: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.onSurface },
   block: { marginTop: spacing.xl, paddingHorizontal: spacing.xl },
-  blockTitle: { fontFamily: fonts.display, fontSize: 14, color: colors.brand, letterSpacing: 1.2, marginBottom: spacing.sm },
+  blockTitle: { fontFamily: fonts.display, fontSize: 14, color: colors.brand, letterSpacing: 1.2, marginBottom: spacing.sm, lineHeight: 18, flexShrink: 1 },
   blockBody: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.onSurfaceTertiary },
-  blockGroup: { marginTop: spacing.xl, paddingHorizontal: spacing.xl },
+  blockGroup: { marginTop: spacing.xl, paddingHorizontal: spacing.xl, minWidth: 0 },
   blockLabelChip: {
     alignSelf: "flex-start",
     borderWidth: 1,
@@ -382,8 +382,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: radius.pill,
     marginBottom: spacing.md,
+    maxWidth: "100%",
   },
-  blockLabelText: { fontFamily: fonts.bold, fontSize: 11, color: colors.brandSecondary, letterSpacing: 1.2 },
+  blockLabelText: { fontFamily: fonts.bold, fontSize: 11, color: colors.brandSecondary, letterSpacing: 1.2, lineHeight: 15 },
   sticky: {
     position: "absolute",
     left: 0,

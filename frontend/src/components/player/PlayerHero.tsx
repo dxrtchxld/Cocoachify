@@ -39,7 +39,7 @@ export default function PlayerHero({
         </View>
       </View>
       <View style={s.bottom}>
-        <Text style={s.title} numberOfLines={3}>{title}</Text>
+        <Text style={s.title} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{title}</Text>
         <View style={s.metaRow}>
           {minutes > 0 ? <Meta icon="time-outline" label={`${minutes} min`} /> : null}
           <Meta icon="barbell-outline" label={`${exerciseCount} moves`} />
@@ -54,13 +54,13 @@ function Meta({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: st
   return (
     <View style={s.meta}>
       <Ionicons name={icon} size={13} color={colors.brand} />
-      <Text style={s.metaText}>{label}</Text>
+      <Text style={s.metaText} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  hero: { height: 320, justifyContent: "space-between" },
+  hero: { minHeight: 300, justifyContent: "space-between" },
   image: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md },
   iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
@@ -77,8 +77,8 @@ const s = StyleSheet.create({
     marginRight: spacing.sm,
   },
   badgeText: { fontFamily: fonts.bold, fontSize: 10, color: colors.onSurfaceTertiary, letterSpacing: 1.2 },
-  bottom: { padding: spacing.xl, gap: spacing.md },
-  title: { fontFamily: fonts.displayBold, fontSize: 28, lineHeight: 34, color: colors.onSurface },
+  bottom: { padding: spacing.xl, gap: spacing.md, minWidth: 0, flexShrink: 1 },
+  title: { fontFamily: fonts.displayBold, fontSize: 26, lineHeight: 32, color: colors.onSurface },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   meta: {
     flexDirection: "row",

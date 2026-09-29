@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     overflow: "hidden",
   },
-  planContent: { padding: spacing.xl },
+  planContent: { padding: spacing.xl, minWidth: 0 },
   dayChip: {
     alignSelf: "flex-start",
     backgroundColor: colors.brand,
@@ -612,12 +612,12 @@ const styles = StyleSheet.create({
   dayChipText: { fontFamily: fonts.bold, fontSize: 11, color: colors.onBrand, letterSpacing: 1 },
   planSession: {
     fontFamily: fonts.displayBold,
-    fontSize: 24,
+    fontSize: 22,
     color: colors.onSurface,
     marginTop: spacing.sm,
-    lineHeight: 30,
+    lineHeight: 28,
   },
-  planMeta: { fontFamily: fonts.medium, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 4 },
+  planMeta: { fontFamily: fonts.medium, fontSize: 13, color: colors.onSurfaceSecondary, marginTop: 4, lineHeight: 18 },
   restNote: {
     flexDirection: "row",
     alignItems: "center",

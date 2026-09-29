@@ -179,8 +179,8 @@ export default function ProgramScreen() {
                 {program.category.toUpperCase()}
               </Text>
             </View>
-            <Text style={styles.title}>{program.name}</Text>
-            <Text style={styles.metaLine}>
+            <Text style={styles.title} numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.8}>{program.name}</Text>
+            <Text style={styles.metaLine} numberOfLines={1}>
               {formatWeeks(program.total_days)}  ·  {program.days_per_week}×/week  ·  {program.difficulty}
             </Text>
           </View>
@@ -298,11 +298,11 @@ function DayRow({
           color={isToday ? colors.onBrand : done ? colors.success : isRest ? colors.onSurfaceSecondary : colors.brand}
         />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.dayName, isRest && { color: colors.onSurfaceSecondary }]} numberOfLines={1}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.dayName, isRest && { color: colors.onSurfaceSecondary }]} numberOfLines={2}>
           {d.session_name}
         </Text>
-        <Text style={styles.daySub}>
+        <Text style={styles.daySub} numberOfLines={1}>
           Day {d.day}
           {d.target_minutes > 0 ? `  ·  ${d.target_minutes} min` : ""}
           {isToday ? "  ·  Today" : ""}
@@ -411,7 +411,7 @@ function formatWeeks(days: number): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  hero: { height: HERO_H, backgroundColor: colors.surfaceSecondary, justifyContent: "space-between" },
+  hero: { minHeight: HERO_H, backgroundColor: colors.surfaceSecondary, justifyContent: "space-between" },
   heroHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -428,11 +428,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroBottom: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  heroBottom: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, minWidth: 0, flexShrink: 1 },
   catBadge: { alignSelf: "flex-start", paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.sm },
   catBadgeText: { fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
-  title: { fontFamily: fonts.displayBold, fontSize: 30, color: "#FFFFFF", marginTop: spacing.sm, lineHeight: 33 },
-  metaLine: { fontFamily: fonts.semiBold, fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, textTransform: "capitalize" },
+  title: { fontFamily: fonts.displayBold, fontSize: 26, color: "#FFFFFF", marginTop: spacing.sm, lineHeight: 32 },
+  metaLine: { fontFamily: fonts.semiBold, fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 6, textTransform: "capitalize", lineHeight: 18 },
   description: {
     fontFamily: fonts.regular,
     fontSize: 14.5,
